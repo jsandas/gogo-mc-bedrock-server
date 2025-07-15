@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/jsandas/gogo-mc-bedrock-server/internal/config"
 	"github.com/jsandas/gogo-mc-bedrock-server/internal/runner"
 	"github.com/jsandas/gogo-mc-bedrock-server/internal/server"
 )
@@ -18,6 +19,19 @@ func init() {
 
 func main() {
 	os.Setenv("LD_LIBRARY_PATH", ".")
+
+	// Get the current working directory
+	workDir, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error getting working directory: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Update server properties from environment variables
+	if err := config.UpdateServerProperties(workDir); err != nil {
+		fmt.Fprintf(os.Stderr, "Error updating server properties: %v\n", err)
+		os.Exit(1)
+	}
 
 	// Create command runner
 	cmdRunner := runner.New(*command)
