@@ -27,8 +27,11 @@ WORKDIR ${APP_DIR}
 
 COPY --from=builder /app/minecraft-server-wrapper ${APP_DIR}/minecraft-server-wrapper
 
-RUN chown -R minecraft /opt/minecraft
+RUN chown -R minecraft ${APP_DIR}
 
 USER minecraft
+
+EXPOSE 19132/udp
+EXPOSE 19133/udp
 
 ENTRYPOINT ["/opt/minecraft/minecraft-server-wrapper"]
