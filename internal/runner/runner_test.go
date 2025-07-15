@@ -16,13 +16,13 @@ func createEchoScript(t *testing.T) string {
 # Increase buffer size for stdin
 if [ -n "$(command -v stdbuf)" ]; then
     exec stdbuf -i0 -o0 -e0 /bin/sh -c '
-        while IFS= read -r line; do
+        while IFS= read -r line || [ -n "$line" ]; do
             printf "ECHO: %s\n" "$line"
             printf "ERROR: %s\n" "$line" >&2
         done
     '
 else
-    while IFS= read -r line; do
+    while IFS= read -r line || [ -n "$line" ]; do
         printf "ECHO: %s\n" "$line"
         printf "ERROR: %s\n" "$line" >&2
     done
@@ -55,6 +55,17 @@ func TestRunner_BasicIO(t *testing.T) {
 		"test input",
 		"special chars: !@#$%",
 	}
+	// Channel to collect outputs
+	outputs := make([]string, 0)
+	done := make(chan struct{})
+
+	// Start collecting outputs
+	go func() {
+		for output := range r.GetOutputChan() {
+			outputs = append(outputs, output)
+		}
+		close(done)
+	}()
 
 	// Send inputs
 	for _, input := range testInputs {
@@ -63,8 +74,19 @@ func TestRunner_BasicIO(t *testing.T) {
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	// Get output and verify
-	outputs := r.GetOutput()
+	// Close stdin and wait for process to complete
+	close(r.stdin)
+	if err := r.Wait(); err != nil {
+		t.Fatalf("Process failed: %v", err)
+	}
+
+	// Wait for output collection to complete with timeout
+	select {
+	case <-done:
+		// Success case
+	case <-time.After(2 * time.Second):
+		t.Fatal("Timeout waiting for output collection")
+	}
 
 	// We expect each input to produce both stdout and stderr lines
 	expectedCount := len(testInputs) * 2
@@ -95,43 +117,6 @@ func TestRunner_BasicIO(t *testing.T) {
 	}
 }
 
-func TestOutputBuffer(t *testing.T) {
-	buf := NewOutputBuffer(3) // Small buffer for testing
-
-	// Test appending within capacity
-	testLines := []string{"line1", "line2", "line3"}
-	for _, line := range testLines {
-		buf.Append(line)
-	}
-
-	lines := buf.GetLines()
-	if len(lines) != 3 {
-		t.Errorf("Expected buffer length of 3, got %d", len(lines))
-	}
-
-	// Test that lines match
-	for i, expected := range testLines {
-		if lines[i] != expected {
-			t.Errorf("Expected line %d to be '%s', got '%s'", i, expected, lines[i])
-		}
-	}
-
-	// Test overflow behavior
-	buf.Append("line4")
-	lines = buf.GetLines()
-
-	if len(lines) != 3 {
-		t.Errorf("Expected buffer length to stay at 3, got %d", len(lines))
-	}
-
-	expectedLines := []string{"line2", "line3", "line4"}
-	for i, expected := range expectedLines {
-		if lines[i] != expected {
-			t.Errorf("Expected line %d to be '%s', got '%s'", i, expected, lines[i])
-		}
-	}
-}
-
 func TestRunner_LargeInput(t *testing.T) {
 	scriptPath := createEchoScript(t)
 
@@ -147,40 +132,55 @@ func TestRunner_LargeInput(t *testing.T) {
 	// Create a test pattern that's easier to verify
 	pattern := "abcdefghijklmnopqrstuvwxyz0123456789"
 	largeInput := strings.Repeat(pattern, 1000) // ~36KB of repeating pattern
-	r.WriteInput(largeInput)
 
-	// Give more time for the process to handle input and produce output
-	deadline := time.Now().Add(5 * time.Second)
-	found := false
-	var outputs []string
+	// Channel to collect outputs
+	outputs := make([]string, 0)
+	done := make(chan struct{})
+	found := make(chan struct{})
 
-	for time.Now().Before(deadline) {
-		outputs = r.GetOutput()
-		for _, output := range outputs {
+	// Start collecting outputs
+	go func() {
+		defer close(done)
+		for output := range r.GetOutputChan() {
+			outputs = append(outputs, output)
+			// Check if we found our input
 			if strings.HasPrefix(output, "ECHO: ") {
-				// Verify the echoed content matches our input
 				echoed := strings.TrimPrefix(output, "ECHO: ")
 				if echoed == largeInput {
-					found = true
-					break
+					close(found)
 				}
 			}
 		}
-		if found {
-			break
-		}
-		time.Sleep(100 * time.Millisecond)
+	}()
+
+	r.WriteInput(largeInput)
+
+	// Close stdin and wait for process to complete
+	close(r.stdin)
+	if err := r.Wait(); err != nil {
+		t.Fatalf("Process failed: %v", err)
 	}
 
-	if !found {
+	// Wait for either the matching output or timeout
+	select {
+	case <-found:
+		// Success case - found the expected output
+	case <-time.After(5 * time.Second):
 		t.Errorf("Large input was not properly echoed after 5 seconds. Got %d lines of output", len(outputs))
 		if len(outputs) > 0 {
-			// Print the first line to help diagnose the issue
 			t.Logf("First output line: %s", outputs[0])
 			if len(outputs) > 1 {
 				t.Logf("Second output line: %s", outputs[1])
 			}
 		}
+	}
+
+	// Wait for output collection to complete
+	select {
+	case <-done:
+		// Success case
+	case <-time.After(2 * time.Second):
+		t.Fatal("Timeout waiting for output collection")
 	}
 }
 
@@ -196,10 +196,22 @@ func TestRunner_MultipleWriters(t *testing.T) {
 	// Give some time for the process to start
 	time.Sleep(100 * time.Millisecond)
 
+	// Channel to collect outputs
+	outputs := make([]string, 0)
+	done := make(chan struct{})
+
+	// Start collecting outputs
+	go func() {
+		for output := range r.GetOutputChan() {
+			outputs = append(outputs, output)
+		}
+		close(done)
+	}()
+
 	// Launch multiple goroutines writing simultaneously
 	const numWriters = 10
 	const numWrites = 10
-	done := make(chan bool)
+	writersDone := make(chan bool)
 
 	for i := 0; i < numWriters; i++ {
 		go func(id int) {
@@ -207,20 +219,33 @@ func TestRunner_MultipleWriters(t *testing.T) {
 				input := fmt.Sprintf("writer-%d-write-%d", id, j)
 				r.WriteInput(input)
 			}
-			done <- true
+			writersDone <- true
 		}(i)
 	}
 
 	// Wait for all writers to complete
 	for i := 0; i < numWriters; i++ {
-		<-done
+		<-writersDone
 	}
 
 	// Give some time for the process to handle all input
 	time.Sleep(500 * time.Millisecond)
 
+	// Close stdin and wait for process to complete
+	close(r.stdin)
+	if err := r.Wait(); err != nil {
+		t.Fatalf("Process failed: %v", err)
+	}
+
+	// Wait for output collection to complete with timeout
+	select {
+	case <-done:
+		// Success case
+	case <-time.After(5 * time.Second):
+		t.Fatal("Timeout waiting for output collection")
+	}
+
 	// Verify outputs
-	outputs := r.GetOutput()
 	writesFound := make(map[string]bool)
 
 	for _, output := range outputs {

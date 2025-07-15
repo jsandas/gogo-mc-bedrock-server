@@ -8,52 +8,21 @@ import (
 	"sync"
 )
 
-// OutputBuffer stores the last N lines of output
-type OutputBuffer struct {
-	mu     sync.Mutex
-	lines  []string
-	maxLen int
-}
-
-func NewOutputBuffer(maxLen int) *OutputBuffer {
-	return &OutputBuffer{
-		lines:  make([]string, 0, maxLen),
-		maxLen: maxLen,
-	}
-}
-
-func (b *OutputBuffer) Append(line string) {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	b.lines = append(b.lines, line)
-	if len(b.lines) > b.maxLen {
-		b.lines = b.lines[1:]
-	}
-}
-
-func (b *OutputBuffer) GetLines() []string {
-	b.mu.Lock()
-	defer b.mu.Unlock()
-
-	result := make([]string, len(b.lines))
-	copy(result, b.lines)
-	return result
-}
-
 // Runner manages the execution of a command and its I/O
 type Runner struct {
-	cmd          *exec.Cmd
-	outputBuffer *OutputBuffer
-	stdin        chan string
+	cmd        *exec.Cmd
+	stdin      chan string
+	outputChan chan string   // Channel for streaming output
+	done       chan struct{} // Channel to signal when the command is done
 }
 
 // New creates a new Runner instance
 func New(command string, args ...string) *Runner {
 	return &Runner{
-		cmd:          exec.Command(command, args...),
-		outputBuffer: NewOutputBuffer(1000),
-		stdin:        make(chan string),
+		cmd:        exec.Command(command, args...),
+		stdin:      make(chan string),
+		outputChan: make(chan string, 100), // Buffered channel for output
+		done:       make(chan struct{}),
 	}
 }
 
@@ -86,37 +55,43 @@ func (r *Runner) Start() error {
 	outScanner := bufio.NewScanner(stdout)
 	errScanner := bufio.NewScanner(stderr)
 
+	// Create a WaitGroup to coordinate the scanner goroutines
+	var scanners sync.WaitGroup
+	scanners.Add(2)
+
 	// Start goroutine to scan stdout
 	go func() {
+		defer scanners.Done()
 		for outScanner.Scan() {
-			line := outScanner.Text()
-			fmt.Println(line)
-			r.outputBuffer.Append(line)
+			select {
+			case r.outputChan <- outScanner.Text():
+			default:
+				// Channel is full, discard output
+			}
 		}
 	}()
 
 	// Start goroutine to scan stderr
 	go func() {
+		defer scanners.Done()
 		for errScanner.Scan() {
-			line := "[ERR] " + errScanner.Text()
-			fmt.Println(line)
-			r.outputBuffer.Append(line)
+			select {
+			case r.outputChan <- "[ERR] " + errScanner.Text():
+			default:
+				// Channel is full, discard output
+			}
 		}
 	}()
 
-	// Start goroutine to handle terminal input
+	// Start goroutine to manage output channel closure
 	go func() {
-		scanner := bufio.NewScanner(os.Stdin)
-		for scanner.Scan() {
-			r.stdin <- scanner.Text()
-		}
-		if err := scanner.Err(); err != nil {
-			fmt.Fprintf(os.Stderr, "Error reading from stdin: %v\n", err)
-		}
+		scanners.Wait()     // Wait for both scanners to complete
+		close(r.outputChan) // Then close the output channel
 	}()
 
 	// Start goroutine to forward input to the process
 	go func() {
+		defer stdin.Close() // Ensure stdin is closed when done
 		for input := range r.stdin {
 			input = input + "\n"
 			_, err := stdin.Write([]byte(input))
@@ -135,9 +110,14 @@ func (r *Runner) WriteInput(input string) {
 	r.stdin <- input
 }
 
-// GetOutput returns the current output buffer contents
-func (r *Runner) GetOutput() []string {
-	return r.outputBuffer.GetLines()
+// GetOutputChan returns a channel that receives command output in real-time
+func (r *Runner) GetOutputChan() <-chan string {
+	return r.outputChan
+}
+
+// Done returns a channel that's closed when the command completes
+func (r *Runner) Done() <-chan struct{} {
+	return r.done
 }
 
 // Wait waits for the command to complete
