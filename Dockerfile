@@ -16,7 +16,7 @@ ENV MINECRAFT_VER=${MC_VER}
 ENV APP_DIR=/opt/minecraft
 
 RUN apt-get update && apt-get upgrade -y \
-    && apt-get install -y curl unzip \
+    && apt-get install -y curl \
     && apt-get autoremove -y \
     && rm -rf /var/lib/apt/lists/*
 
