@@ -33,6 +33,14 @@ func init() {
 func main() {
 	os.Setenv("LD_LIBRARY_PATH", ".")
 
+	// Check if EULA_ACCEPT is set to true
+	if eula := os.Getenv("EULA_ACCEPT"); eula != "true" {
+		fmt.Fprintf(os.Stderr, "You must accept the EULA by setting EULA_ACCEPT to 'true'\n Links:\n")
+		fmt.Fprintf(os.Stderr, "   https://minecraft.net/eula\n")
+		fmt.Fprintf(os.Stderr, "   https://go.microsoft.com/fwlink/?LinkId=521839\n")
+		os.Exit(1)
+	}
+
 	// Get the working directory
 	var workDir string
 	if *appDir != "" {
