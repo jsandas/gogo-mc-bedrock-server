@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -8,11 +9,18 @@ import (
 	"github.com/jsandas/gogo-mc-bedrock-server/internal/server"
 )
 
+var command = flag.String("command", "./bedrock_server", "command to execute")
+
+func init() {
+	flag.Parse()
+	fmt.Printf("Starting %s...\n", *command)
+}
+
 func main() {
 	os.Setenv("LD_LIBRARY_PATH", ".")
 
 	// Create command runner
-	cmdRunner := runner.New("./bedrock_server")
+	cmdRunner := runner.New(*command)
 
 	// Start the command
 	if err := cmdRunner.Start(); err != nil {
