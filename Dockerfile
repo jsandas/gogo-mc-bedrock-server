@@ -25,13 +25,12 @@ RUN useradd -m -d ${APP_DIR} -s /bin/bash minecraft \
 
 WORKDIR ${APP_DIR}
 
+COPY --from=builder /app/minecraft-server-wrapper ${APP_DIR}/minecraft-server-wrapper
 COPY --from=itzg/mc-monitor /mc-monitor /usr/local/bin/mc-monitor
 COPY docker-entrypoint.sh ${APP_DIR}
 
 RUN chmod +x ${APP_DIR}/docker-entrypoint.sh \
     && chown -R minecraft /opt/minecraft
-
-COPY --from=builder /app/minecraft-server-wrapper ${APP_DIR}/minecraft-server-wrapper
 
 USER minecraft
 

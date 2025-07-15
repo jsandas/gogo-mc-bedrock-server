@@ -6,26 +6,53 @@ import (
 	"os"
 
 	"github.com/jsandas/gogo-mc-bedrock-server/internal/config"
+	"github.com/jsandas/gogo-mc-bedrock-server/internal/downloader"
 	"github.com/jsandas/gogo-mc-bedrock-server/internal/runner"
 	"github.com/jsandas/gogo-mc-bedrock-server/internal/server"
 )
 
-var command = flag.String("command", "./bedrock_server", "command to execute")
-var listenAddress = flag.String("listen", ":8080", "address for the web server")
+var (
+	command       = flag.String("command", "./bedrock_server", "command to execute")
+	listenAddress = flag.String("listen", ":8080", "address for the web server")
+	appDir        = flag.String("app-dir", "", "directory containing the minecraft server (defaults to current directory)")
+	mcVersion     = flag.String("mc-version", "", "Minecraft version to download (if not already present)")
+)
 
 func init() {
+	// Set defaults from environment variables if present
+	if envAppDir := os.Getenv("APP_DIR"); envAppDir != "" {
+		flag.Set("app-dir", envAppDir)
+	}
+	if envMcVer := os.Getenv("MINECRAFT_VER"); envMcVer != "" {
+		flag.Set("mc-version", envMcVer)
+	}
+
 	flag.Parse()
-	fmt.Printf("Starting %s...\n", *command)
 }
 
 func main() {
 	os.Setenv("LD_LIBRARY_PATH", ".")
 
-	// Get the current working directory
-	workDir, err := os.Getwd()
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error getting working directory: %v\n", err)
-		os.Exit(1)
+	// Get the working directory
+	var workDir string
+	if *appDir != "" {
+		workDir = *appDir
+	} else {
+		var err error
+		workDir, err = os.Getwd()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error getting working directory: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	// Download server if version is specified
+	if *mcVersion != "" {
+		fmt.Printf("Downloading Minecraft server version %s...\n", *mcVersion)
+		if err := downloader.DownloadMinecraftServer(*mcVersion, workDir, ""); err != nil {
+			fmt.Fprintf(os.Stderr, "Error downloading server: %v\n", err)
+			os.Exit(1)
+		}
 	}
 
 	// Update server properties from environment variables
