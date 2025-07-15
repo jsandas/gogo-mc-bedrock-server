@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	command       = flag.String("command", "./bedrock_server", "command to execute")
+	command       = flag.String("command", "./bedrock_server", "command to execute (used for debugging purposes)")
 	listenAddress = flag.String("listen", ":8080", "address for the web server")
 	appDir        = flag.String("app-dir", "", "directory containing the minecraft server (defaults to current directory)")
 	mcVersion     = flag.String("mc-version", "", "Minecraft version to download (if not already present)")
@@ -20,6 +20,9 @@ var (
 
 func init() {
 	// Set defaults from environment variables if present
+	if envListenAddress := os.Getenv("LISTEN_ADDRESS"); envListenAddress != "" {
+		flag.Set("listen", envListenAddress)
+	}
 	if envAppDir := os.Getenv("APP_DIR"); envAppDir != "" {
 		flag.Set("app-dir", envAppDir)
 	}
