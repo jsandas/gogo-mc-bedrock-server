@@ -11,6 +11,7 @@ import (
 )
 
 var command = flag.String("command", "./bedrock_server", "command to execute")
+var listenAddress = flag.String("listen", ":8080", "address for the web server")
 
 func init() {
 	flag.Parse()
@@ -45,7 +46,7 @@ func main() {
 	// Create and start HTTP server
 	srv := server.New(cmdRunner)
 	go func() {
-		if err := srv.Start(":8080"); err != nil {
+		if err := srv.Start(*listenAddress); err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting web server: %v\n", err)
 			os.Exit(1)
 		}
