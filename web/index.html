@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Server Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .wrapper-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .wrapper-card {
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        .status-connected { background-color: #90EE90; }
+        .status-disconnected { background-color: #FFB6C6; }
+        .status-error { background-color: #FFB6C6; }
+        .status-connecting { background-color: #FFD700; }
+        .status-reconnecting { background-color: #FFD700; }
+        .console {
+            background-color: #1e1e1e;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            margin-top: 10px;
+        }
+        .stats {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Minecraft Server Manager</h1>
+    <div class="wrapper-list" id="wrapperList">
+        <!-- Wrappers will be inserted here -->
+    </div>
+
+    <script>
+        const wrappers = new Map();
+        let activeConnections = new Map();
+
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return 'Never';
+            return new Date(timestamp).toLocaleString();
+        }
+
+        function handleInput(event, wrapperId) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendCommand(wrapperId);
+            }
+        }
+
+        function createWrapperCard(wrapper) {
+            const card = document.createElement('div');
+            card.className = 'wrapper-card';
+            card.innerHTML = `
+                <h2>${wrapper.name}</h2>
+                <div class="status status-${wrapper.status.toLowerCase()}">${wrapper.status}</div>
+                ${wrapper.error ? `<div class="error">Error: ${wrapper.error}</div>` : ''}
+                <div class="stats">
+                    <div>Connected: ${formatTimestamp(wrapper.stats.connected_at)}</div>
+                    <div>Last Message: ${formatTimestamp(wrapper.stats.last_message_at)}</div>
+                    <div>Messages Sent: ${wrapper.stats.messages_sent}</div>
+                    <div>Messages Received: ${wrapper.stats.messages_received}</div>
+                    <div>Reconnections: ${wrapper.stats.reconnections}</div>
+                </div>
+                <div class="console" id="console-${wrapper.id}"></div>
+                <input type="text" id="input-${wrapper.id}" placeholder="Enter command..." onkeydown="handleInput(event, '${wrapper.id}')">
+                <button onclick="sendCommand('${wrapper.id}')">Send</button>
+            `;
+            return card;
+        }
+
+        function updateWrappers() {
+            fetch('/api/wrappers')
+                .then(response => response.json())
+                .then(data => {
+                    const list = document.getElementById('wrapperList');
+                    data.forEach(wrapper => {
+                        if (!wrappers.has(wrapper.id)) {
+                            const card = createWrapperCard(wrapper);
+                            list.appendChild(card);
+                            wrappers.set(wrapper.id, wrapper);
+                            connectWebSocket(wrapper);
+                        } else {
+                            // Update existing card
+                            const existingWrapper = wrappers.get(wrapper.id);
+                            if (existingWrapper.status !== wrapper.status) {
+                                const card = document.querySelector(`.wrapper-card:has(#console-${wrapper.id})`);
+                                card.replaceWith(createWrapperCard(wrapper));
+                                if (existingWrapper.status !== 'connected' && wrapper.status === 'connected') {
+                                    connectWebSocket(wrapper);
+                                }
+                            }
+                        }
+                    });
+                });
+        }
+
+        function connectWebSocket(wrapper) {
+            if (activeConnections.has(wrapper.id)) {
+                activeConnections.get(wrapper.id).close();
+            }
+
+            const ws = new WebSocket(`ws://${location.host}/ws?wrapper=${wrapper.id}`);
+            const console = document.getElementById(`console-${wrapper.id}`);
+
+            ws.onmessage = (event) => {
+                console.innerHTML += event.data + '\n';
+                console.scrollTop = console.scrollHeight;
+            };
+
+            ws.onclose = () => {
+                console.innerHTML += 'Connection closed\n';
+                activeConnections.delete(wrapper.id);
+                // Try to reconnect if wrapper is still connected
+                setTimeout(() => {
+                    if (wrappers.get(wrapper.id).status === 'connected') {
+                        connectWebSocket(wrapper);
+                    }
+                }, 5000);
+            };
+
+            activeConnections.set(wrapper.id, ws);
+        }
+
+        function sendCommand(wrapperId) {
+            const input = document.getElementById(`input-${wrapperId}`);
+            const ws = activeConnections.get(wrapperId);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(input.value);
+                input.value = '';
+            }
+        }
+
+        // Initial load and periodic updates
+        updateWrappers();
+        setInterval(updateWrappers, 5000);
+    </script>
+</body>
+</html>

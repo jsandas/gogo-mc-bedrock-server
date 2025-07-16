@@ -1,0 +1,10 @@
+{
+    "listen_address": ":8081",
+    "wrappers": [
+        {
+            "id": "server1",
+            "name": "Main Server",
+            "address": "ws://localhost:8080/ws"
+        }
+    ]
+}
