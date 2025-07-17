@@ -35,14 +35,15 @@ type ConnectionStats struct {
 
 // WrapperConnection represents a connection to a remote Minecraft server wrapper
 type WrapperConnection struct {
-	ID       string          `json:"id"`
-	Name     string          `json:"name"`
-	Address  string          `json:"address"`
-	Username string          `json:"-"` // Hide sensitive info from JSON
-	Password string          `json:"-"`
-	Status   WrapperStatus   `json:"status"`
-	Error    string          `json:"error,omitempty"`
-	Stats    ConnectionStats `json:"stats"`
+	ID        string          `json:"id"`
+	Name      string          `json:"name"`
+	Address   string          `json:"address"`
+	Username  string          `json:"-"` // Hide sensitive info from JSON
+	Password  string          `json:"-"`
+	SharedKey string          `json:"-"` // Auth key for the wrapper
+	Status    WrapperStatus   `json:"status"`
+	Error     string          `json:"error,omitempty"`
+	Stats     ConnectionStats `json:"stats"`
 
 	conn            *websocket.Conn
 	sendChan        chan []byte
@@ -69,7 +70,7 @@ func NewConnectionManager() *ConnectionManager {
 }
 
 // Connect establishes a connection to a remote wrapper
-func (m *ConnectionManager) Connect(id, name, address, username, password string) error {
+func (m *ConnectionManager) Connect(id, name, address, username, password, sharedKey string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -85,6 +86,7 @@ func (m *ConnectionManager) Connect(id, name, address, username, password string
 		Address:         address,
 		Username:        username,
 		Password:        password,
+		SharedKey:       sharedKey,
 		Status:          StatusConnecting,
 		sendChan:        make(chan []byte, 100),
 		recvChan:        make(chan []byte, 100),
@@ -126,6 +128,15 @@ func (w *WrapperConnection) manage() {
 
 	for {
 		err := w.connect()
+		if err != nil {
+			// If authentication failed, don't retry
+			if err.Error() == "authentication failed" {
+				w.Status = StatusError
+				w.Error = "authentication failed"
+				return
+			}
+		}
+
 		if err == nil {
 			// Reset reconnect attempts on successful connection
 			reconnectAttempts = 0
@@ -162,9 +173,20 @@ func (w *WrapperConnection) connect() error {
 		header.Set("Authorization", "Basic "+auth)
 	}
 
+	// Add the shared key header
+	if w.SharedKey != "" {
+		header.Set("X-Auth-Key", w.SharedKey)
+	}
+
 	// Connect to the wrapper
 	dialer := websocket.Dialer{
 		HandshakeTimeout: 10 * time.Second,
+	}
+
+	// Check if there's already an active connection
+	if w.conn != nil {
+		w.conn.Close()
+		w.conn = nil
 	}
 
 	conn, resp, err := dialer.Dial(w.Address, header)
@@ -172,6 +194,10 @@ func (w *WrapperConnection) connect() error {
 		w.Status = StatusError
 		errMsg := err.Error()
 		if resp != nil {
+			if resp.StatusCode == http.StatusUnauthorized {
+				w.Error = "authentication failed"
+				return fmt.Errorf("authentication failed")
+			}
 			errMsg = fmt.Sprintf("%v (HTTP Status: %d)", err, resp.StatusCode)
 		}
 		w.Error = errMsg

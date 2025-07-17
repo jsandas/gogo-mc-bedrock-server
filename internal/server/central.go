@@ -10,6 +10,12 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// CentralServerConfig holds configuration for the central server
+type CentralServerConfig struct {
+	Manager *ConnectionManager
+	AuthKey string
+}
+
 // CentralServer represents the central management server
 type CentralServer struct {
 	manager    *ConnectionManager
@@ -17,27 +23,33 @@ type CentralServer struct {
 	upgrader   websocket.Upgrader
 	clients    map[*websocket.Conn]bool
 	clientsMux sync.RWMutex
+	authKey    string
 }
 
 // NewCentralServer creates a new central server instance
-func NewCentralServer(manager *ConnectionManager) *CentralServer {
+func NewCentralServer(config CentralServerConfig) *CentralServer {
 	return &CentralServer{
-		manager: manager,
+		manager: config.Manager,
 		upgrader: websocket.Upgrader{
 			CheckOrigin: func(r *http.Request) bool {
 				return true // Allow all origins for now
 			},
 		},
 		clients: make(map[*websocket.Conn]bool),
+		authKey: config.AuthKey,
 	}
 }
 
 // Start starts the HTTP server
 func (s *CentralServer) Start(addr string) error {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/api/wrappers", s.handleWrappers)
-	mux.HandleFunc("/ws", s.handleWebSocket)
+
+	// Public routes
 	mux.Handle("/", http.FileServer(http.Dir("web")))
+
+	// Protected routes
+	mux.HandleFunc("/api/wrappers", s.authMiddleware(s.handleWrappers))
+	mux.HandleFunc("/ws", s.authMiddleware(s.handleWebSocket))
 
 	s.server = &http.Server{
 		Addr:    addr,

@@ -123,7 +123,29 @@
         const wrappers = new Map();
         let activeTab = null;
         let activeConnections = new Map();
+        let authKey = null;
         const MAX_HISTORY_LINES = 1000;  // Maximum number of lines to store per console
+        
+        function getAuthKey() {
+            if (authKey) return authKey;
+            
+            authKey = localStorage.getItem('authKey');
+            if (!authKey) {
+                authKey = prompt('Please enter your authentication key:');
+                if (authKey) {
+                    localStorage.setItem('authKey', authKey);
+                } else {
+                    console.error('Authentication key is required');
+                    return null;
+                }
+            }
+            return authKey;
+        }
+
+        function clearAuthKey() {
+            authKey = null;
+            localStorage.removeItem('authKey');
+        }
 
         function loadConsoleHistory(wrapperId) {
             return JSON.parse(localStorage.getItem(`console-history-${wrapperId}`) || '[]');
@@ -243,9 +265,27 @@
         }
 
         function updateWrappers() {
-            fetch('/api/wrappers')
-                .then(response => response.json())
+            const key = getAuthKey();
+            if (!key) return;
+
+            fetch('/api/wrappers', {
+                headers: {
+                    'X-Auth-Key': key
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            clearAuthKey();
+                            alert('Authentication failed. Please refresh the page to try again.');
+                            return null;
+                        }
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
                 .then(data => {
+                    if (!data) return;
                     const tabList = document.getElementById('tabList');
                     const containers = document.getElementById('wrapperContainers');
                     
@@ -269,6 +309,12 @@
                         } else {
                             // Update existing wrapper
                             const existingWrapper = wrappers.get(wrapper.id);
+                            
+                            // Clear error when status changes to connected
+                            if (wrapper.status === 'connected') {
+                                wrapper.error = '';
+                            }
+
                             if (existingWrapper.status !== wrapper.status) {
                                 // Update tab
                                 const tab = document.getElementById(`tab-${wrapper.id}`);
@@ -288,11 +334,17 @@
         }
 
         function connectWebSocket(wrapper) {
+            const key = getAuthKey();
+            if (!key) return;
+
             if (activeConnections.has(wrapper.id)) {
                 activeConnections.get(wrapper.id).close();
             }
 
-            const ws = new WebSocket(`ws://${location.host}/ws?wrapper=${wrapper.id}`);
+            const wsUrl = new URL(`ws://${location.host}/ws`);
+            wsUrl.searchParams.append('wrapper', wrapper.id);
+            wsUrl.searchParams.append('auth', key);
+            const ws = new WebSocket(wsUrl.toString());
             const console = document.getElementById(`console-${wrapper.id}`);
 
             // Load and display existing history

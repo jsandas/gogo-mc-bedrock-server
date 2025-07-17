@@ -1,0 +1,19 @@
+{
+    "listen_address": ":8081",
+    "auth_key": "central-server-auth-key",
+    "wrappers": [
+        {
+            "id": "server1",
+            "name": "Minecraft Server 1",
+            "address": "localhost:8080",
+            "shared_key": "wrapper1-auth-key"
+        },
+        {
+            "id": "server2",
+            "name": "Minecraft Server 2",
+            "address": "localhost:8082",
+            "shared_key": "wrapper2-auth-key"
+        }
+    ]
+}
+
