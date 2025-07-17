@@ -24,13 +24,21 @@ type Server struct {
 	connections  map[*websocket.Conn]bool
 	connLock     sync.RWMutex
 	outputBuffer []string
+	authKey      string // Pre-shared key for authentication
+}
+
+// ServerConfig holds configuration for the server
+type ServerConfig struct {
+	Runner  *runner.Runner
+	AuthKey string
 }
 
 // New creates a new Server instance
-func New(runner *runner.Runner) *Server {
+func New(config ServerConfig) *Server {
 	srv := &Server{
-		runner:      runner,
+		runner:      config.Runner,
 		connections: make(map[*websocket.Conn]bool),
+		authKey:     config.AuthKey,
 	}
 
 	// Start goroutine to handle runner output
@@ -41,11 +49,17 @@ func New(runner *runner.Runner) *Server {
 
 // Start begins the HTTP server
 func (s *Server) Start(addr string) error {
-	http.HandleFunc("/", s.handleIndex)
-	http.HandleFunc("/ws", s.handleWebSocket)
+	// Create a new ServeMux for our routes
+	mux := http.NewServeMux()
+
+	// Index page doesn't require auth
+	mux.HandleFunc("/", s.handleIndex)
+
+	// Protected routes with auth middleware
+	mux.HandleFunc("/ws", s.authMiddleware(s.handleWebSocket))
 
 	fmt.Printf("Web server started at http://%s\n", addr)
-	return http.ListenAndServe(addr, nil)
+	return http.ListenAndServe(addr, mux)
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -85,6 +99,12 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			break
 		}
+
+		// Check if this is the authentication message
+		if len(message) > 0 && message[0] == '{' {
+			continue // Skip the auth message as it's already handled by the middleware
+		}
+
 		s.runner.WriteInput(string(message))
 	}
 }
@@ -184,7 +204,21 @@ const htmlTemplate = `
 
         function connect() {
             const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            ws = new WebSocket(protocol + '//' + window.location.host + '/ws');
+            let authKey = localStorage.getItem('authKey');
+            if (!authKey) {
+                authKey = prompt('Please enter your authentication key:');
+                if (authKey) {
+                    localStorage.setItem('authKey', authKey);
+                } else {
+                    console.error('Authentication key is required');
+                    return;
+                }
+            }
+            
+            // Add auth key as a query parameter
+            const wsUrl = new URL(protocol + '//' + window.location.host + '/ws');
+            wsUrl.searchParams.append('auth', authKey);
+            ws = new WebSocket(wsUrl.toString());
 
             ws.onopen = function() {
                 console.log('Connected to server');
@@ -194,12 +228,18 @@ const htmlTemplate = `
                 reconnectAttempts = 0;
             };
 
-            ws.onclose = function() {
-                console.log('Disconnected from server');
+            ws.onclose = function(event) {
+                console.log('Disconnected from server:', event.code);
                 const status = document.getElementById('status');
                 status.textContent = 'Disconnected';
                 status.className = 'status disconnected';
-                if (reconnectAttempts < maxReconnectAttempts) {
+
+                // Check if it was an auth error (code 1008 is policy violation)
+                if (event.code === 1008) {
+                    localStorage.removeItem('authKey'); // Clear invalid key
+                    const output = document.getElementById('output');
+                    output.innerHTML += '<div class="disconnected">Authentication failed. Please refresh the page to try again.</div>';
+                } else if (reconnectAttempts < maxReconnectAttempts) {
                     reconnectAttempts++;
                     setTimeout(connect, 1000 * reconnectAttempts);
                 } else {

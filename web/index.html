@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Minecraft Server Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .tab-list {
+            display: flex;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 0;
+            padding: 0;
+            list-style: none;
+            gap: 5px;
+        }
+        .tab {
+            padding: 10px 20px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-bottom: none;
+            border-radius: 5px 5px 0 0;
+            background: #f5f5f5;
+            position: relative;
+            bottom: -1px;
+        }
+        .tab.active {
+            background: white;
+            border-bottom: 1px solid white;
+            font-weight: bold;
+        }
+        .tab:hover:not(.active) {
+            background: #e5e5e5;
+        }
+        .tab-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .tab-status-connected { background-color: #90EE90; }
+        .tab-status-disconnected { background-color: #FFB6C6; }
+        .tab-status-error { background-color: #FFB6C6; }
+        .tab-status-connecting { background-color: #FFD700; }
+        .tab-status-reconnecting { background-color: #FFD700; }
+        .wrapper-container {
+            display: none;
+            border: 1px solid #ccc;
+            border-top: none;
+            padding: 20px;
+            margin-top: 0;
+        }
+        .wrapper-container.active {
+            display: block;
+        }
+        .status {
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 0.9em;
+        }
+        .status-connected { background-color: #90EE90; }
+        .status-disconnected { background-color: #FFB6C6; }
+        .status-error { background-color: #FFB6C6; }
+        .status-connecting { background-color: #FFD700; }
+        .status-reconnecting { background-color: #FFD700; }
+        .console {
+            background-color: #1e1e1e;
+            color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            height: 300px;
+            overflow-y: auto;
+            font-family: monospace;
+            margin-top: 10px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            max-width: 150ch;
+        }
+        .stats {
+            font-size: 0.9em;
+            color: #666;
+            margin-top: 10px;
+        }
+        .console-controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .console-controls input {
+            flex: 1;
+        }
+        .console-controls button {
+            padding: 5px 10px;
+        }
+        .clear-button {
+            background-color: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+        }
+        .clear-button:hover {
+            background-color: #ff5252;
+        }
+    </style>
+</head>
+<body>
+    <h1>Minecraft Server Manager</h1>
+    <ul class="tab-list" id="tabList">
+        <!-- Tabs will be inserted here -->
+    </ul>
+    <div id="wrapperContainers">
+        <!-- Wrapper containers will be inserted here -->
+    </div>
+
+    <script>
+        const wrappers = new Map();
+        let activeTab = null;
+        let activeConnections = new Map();
+        let authKey = null;
+        const MAX_HISTORY_LINES = 1000;  // Maximum number of lines to store per console
+        
+        function getAuthKey() {
+            if (authKey) return authKey;
+            
+            authKey = localStorage.getItem('authKey');
+            if (!authKey) {
+                authKey = prompt('Please enter your authentication key:');
+                if (authKey) {
+                    localStorage.setItem('authKey', authKey);
+                } else {
+                    console.error('Authentication key is required');
+                    return null;
+                }
+            }
+            return authKey;
+        }
+
+        function clearAuthKey() {
+            authKey = null;
+            localStorage.removeItem('authKey');
+        }
+
+        function loadConsoleHistory(wrapperId) {
+            return JSON.parse(localStorage.getItem(`console-history-${wrapperId}`) || '[]');
+        }
+
+        function saveConsoleHistory(wrapperId, lines) {
+            // Keep only the last MAX_HISTORY_LINES lines
+            if (lines.length > MAX_HISTORY_LINES) {
+                lines = lines.slice(-MAX_HISTORY_LINES);
+            }
+            localStorage.setItem(`console-history-${wrapperId}`, JSON.stringify(lines));
+        }
+
+        function appendToConsole(wrapperId, text) {
+            const console = document.getElementById(`console-${wrapperId}`);
+            if (!console) return;
+
+            const lines = loadConsoleHistory(wrapperId);
+            
+            // Split text into lines and process each line
+            const newLines = text.split('\n');
+            for (const line of newLines) {
+                if (!line.trim()) continue; // Skip empty lines
+                
+                // If this is a timestamped line and it's not the first line in history,
+                // make sure there's a line break before it
+                if (line.startsWith('[') && lines.length > 0) {
+                    lines.push(line);
+                } else {
+                    // For non-timestamped lines or the first line,
+                    // check if it's a continuation of the last line
+                    if (lines.length > 0 && !lines[lines.length - 1].startsWith('[')) {
+                        // Append to the previous line if it wasn't a timestamped line
+                        lines[lines.length - 1] = lines[lines.length - 1] + '\n' + line;
+                    } else {
+                        lines.push(line);
+                    }
+                }
+            }
+            
+            // Keep only the last MAX_HISTORY_LINES
+            if (lines.length > MAX_HISTORY_LINES) {
+                lines.splice(0, lines.length - MAX_HISTORY_LINES);
+            }
+            
+            saveConsoleHistory(wrapperId, lines);
+            console.innerHTML = lines.join('\n');
+            console.scrollTop = console.scrollHeight;
+        }
+
+        function clearConsole(wrapperId) {
+            const console = document.getElementById(`console-${wrapperId}`);
+            if (!console) return;
+            
+            console.innerHTML = '';
+            saveConsoleHistory(wrapperId, []);
+            appendToConsole(wrapperId, '--- Console cleared ---');
+        }
+
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return 'Never';
+            return new Date(timestamp).toLocaleString();
+        }
+
+        function handleInput(event, wrapperId) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                sendCommand(wrapperId);
+            }
+        }
+
+        function switchTab(wrapperId) {
+            // Remove active class from all tabs and containers
+            document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
+            document.querySelectorAll('.wrapper-container').forEach(container => container.classList.remove('active'));
+            
+            // Add active class to selected tab and container
+            document.getElementById(`tab-${wrapperId}`).classList.add('active');
+            document.getElementById(`container-${wrapperId}`).classList.add('active');
+            activeTab = wrapperId;
+        }
+
+        function createTab(wrapper) {
+            const tab = document.createElement('li');
+            tab.className = `tab${activeTab === wrapper.id ? ' active' : ''}`;
+            tab.id = `tab-${wrapper.id}`;
+            tab.innerHTML = `
+                <span class="tab-status tab-status-${wrapper.status.toLowerCase()}"></span>
+                ${wrapper.name}
+            `;
+            tab.onclick = () => switchTab(wrapper.id);
+            return tab;
+        }
+
+        function createWrapperContainer(wrapper) {
+            const container = document.createElement('div');
+            container.className = `wrapper-container${activeTab === wrapper.id ? ' active' : ''}`;
+            container.id = `container-${wrapper.id}`;
+            container.innerHTML = `
+                <div class="stats">
+                    <div>Status: ${wrapper.status}</div>
+                    ${wrapper.error ? `<div class="error">Error: ${wrapper.error}</div>` : ''}
+                    <div>Connected: ${formatTimestamp(wrapper.stats.connected_at)}</div>
+                    <div>Last Message: ${formatTimestamp(wrapper.stats.last_message_at)}</div>
+                    <div>Messages Sent: ${wrapper.stats.messages_sent}</div>
+                    <div>Messages Received: ${wrapper.stats.messages_received}</div>
+                    <div>Reconnections: ${wrapper.stats.reconnections}</div>
+                </div>
+                <div class="console" id="console-${wrapper.id}"></div>
+                <div class="console-controls">
+                    <input type="text" id="input-${wrapper.id}" placeholder="Enter command..." onkeydown="handleInput(event, '${wrapper.id}')">
+                    <button onclick="sendCommand('${wrapper.id}')">Send</button>
+                    <button class="clear-button" onclick="clearConsole('${wrapper.id}')">Clear</button>
+                </div>
+            `;
+            return container;
+        }
+
+        function updateWrappers() {
+            const key = getAuthKey();
+            if (!key) return;
+
+            fetch('/api/wrappers', {
+                headers: {
+                    'X-Auth-Key': key
+                }
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        if (response.status === 401) {
+                            clearAuthKey();
+                            alert('Authentication failed. Please refresh the page to try again.');
+                            return null;
+                        }
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (!data) return;
+                    const tabList = document.getElementById('tabList');
+                    const containers = document.getElementById('wrapperContainers');
+                    
+                    // Set initial active tab if none is set
+                    if (!activeTab && data.length > 0) {
+                        activeTab = data[0].id;
+                    }
+
+                    data.forEach(wrapper => {
+                        if (!wrappers.has(wrapper.id)) {
+                            // Create and add new tab
+                            const tab = createTab(wrapper);
+                            tabList.appendChild(tab);
+
+                            // Create and add new container
+                            const container = createWrapperContainer(wrapper);
+                            containers.appendChild(container);
+
+                            wrappers.set(wrapper.id, wrapper);
+                            connectWebSocket(wrapper);
+                        } else {
+                            // Update existing wrapper
+                            const existingWrapper = wrappers.get(wrapper.id);
+                            
+                            // Clear error when status changes to connected
+                            if (wrapper.status === 'connected') {
+                                wrapper.error = '';
+                            }
+
+                            if (existingWrapper.status !== wrapper.status) {
+                                // Update tab
+                                const tab = document.getElementById(`tab-${wrapper.id}`);
+                                tab.replaceWith(createTab(wrapper));
+
+                                // Update container
+                                const container = document.getElementById(`container-${wrapper.id}`);
+                                container.replaceWith(createWrapperContainer(wrapper));
+
+                                if (existingWrapper.status !== 'connected' && wrapper.status === 'connected') {
+                                    connectWebSocket(wrapper);
+                                }
+                            }
+                        }
+                    });
+                });
+        }
+
+        function connectWebSocket(wrapper) {
+            const key = getAuthKey();
+            if (!key) return;
+
+            if (activeConnections.has(wrapper.id)) {
+                activeConnections.get(wrapper.id).close();
+            }
+
+            const wsUrl = new URL(`ws://${location.host}/ws`);
+            wsUrl.searchParams.append('wrapper', wrapper.id);
+            wsUrl.searchParams.append('auth', key);
+            const ws = new WebSocket(wsUrl.toString());
+            const console = document.getElementById(`console-${wrapper.id}`);
+
+            // Load and display existing history
+            const history = loadConsoleHistory(wrapper.id);
+            if (history.length > 0) {
+                console.innerHTML = history.join('\n');
+                console.scrollTop = console.scrollHeight;
+            }
+
+            ws.onmessage = (event) => {
+                // If the message starts with [ it's likely a new server message with timestamp
+                if (event.data.startsWith('[')) {
+                    appendToConsole(wrapper.id, '\n' + event.data);
+                } else {
+                    appendToConsole(wrapper.id, event.data);
+                }
+            };
+
+            ws.onclose = () => {
+                appendToConsole(wrapper.id, '\nConnection closed');
+                activeConnections.delete(wrapper.id);
+                // Try to reconnect if wrapper is still connected
+                setTimeout(() => {
+                    if (wrappers.get(wrapper.id).status === 'connected') {
+                        connectWebSocket(wrapper);
+                    }
+                }, 5000);
+            };
+
+            activeConnections.set(wrapper.id, ws);
+        }
+
+        function sendCommand(wrapperId) {
+            const input = document.getElementById(`input-${wrapperId}`);
+            const ws = activeConnections.get(wrapperId);
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(input.value);
+                input.value = '';
+            }
+        }
+
+        // Initial load and periodic updates
+        updateWrappers();
+        setInterval(updateWrappers, 5000);
+    </script>
+</body>
+</html>
