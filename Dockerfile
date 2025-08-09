@@ -9,7 +9,7 @@ RUN go build -o minecraft-server-wrapper ./cmd/minecraft-server-wrapper
 
 FROM debian:bookworm
 
-ARG MC_VER=1.21.94.2
+ARG MC_VER=1.21.100.7
 
 ENV DEBIAN_FRONTEND=noninteractive
 ENV MINECRAFT_VER=${MC_VER}
