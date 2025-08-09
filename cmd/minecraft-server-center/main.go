@@ -92,8 +92,10 @@ func main() {
 				return
 			}
 
+			// Attempt to connect but don't fail if connection fails
 			if err := manager.Connect(w.ID, w.Name, w.Address, w.Username, w.Password, w.SharedKey); err != nil {
-				fmt.Fprintf(os.Stderr, "Error connecting to wrapper %s (%s): %v\n", w.Name, w.ID, err)
+				fmt.Fprintf(os.Stderr, "Initial connection to wrapper %s (%s) failed: %v\n", w.Name, w.ID, err)
+				fmt.Fprintf(os.Stderr, "Will attempt to reconnect automatically...\n")
 			}
 		}(wrapper)
 	}

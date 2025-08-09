@@ -65,7 +65,24 @@
             font-size: 0.9em;
         }
         .status-connected { background-color: #90EE90; }
-        .status-disconnected { background-color: #FFB6C6; }
+        .status.disconnected { background: #F44747; }
+        .status-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .retry-button {
+            padding: 4px 8px;
+            background: #0e639c;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .retry-button:hover {
+            background: #1177bb;
+        }
         .status-error { background-color: #FFB6C6; }
         .status-connecting { background-color: #FFD700; }
         .status-reconnecting { background-color: #FFD700; }
@@ -205,6 +222,31 @@
             appendToConsole(wrapperId, '--- Console cleared ---');
         }
 
+        async function retryConnection(wrapperId) {
+            try {
+                const authKey = getAuthKey();
+                if (!authKey) {
+                    throw new Error('Authentication key not found');
+                }
+
+                const response = await fetch(`/api/retry?wrapper=${wrapperId}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-Auth-Key': authKey
+                    }
+                });
+                
+                if (!response.ok) {
+                    const error = await response.text();
+                    throw new Error(error);
+                }
+                
+                appendToConsole(wrapperId, '--- Retrying connection... ---');
+            } catch (error) {
+                appendToConsole(wrapperId, `--- Error retrying connection: ${error.message} ---`);
+            }
+        }
+
         function formatTimestamp(timestamp) {
             if (!timestamp) return 'Never';
             return new Date(timestamp).toLocaleString();
@@ -246,7 +288,10 @@
             container.id = `container-${wrapper.id}`;
             container.innerHTML = `
                 <div class="stats">
-                    <div>Status: ${wrapper.status}</div>
+                    <div class="status-line">
+                        <span>Status: ${wrapper.status}</span>
+                        ${wrapper.status === 'error' ? `<button class="retry-button" onclick="retryConnection('${wrapper.id}')">Retry Connection</button>` : ''}
+                    </div>
                     ${wrapper.error ? `<div class="error">Error: ${wrapper.error}</div>` : ''}
                     <div>Connected: ${formatTimestamp(wrapper.stats.connected_at)}</div>
                     <div>Last Message: ${formatTimestamp(wrapper.stats.last_message_at)}</div>

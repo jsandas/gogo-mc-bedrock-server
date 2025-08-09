@@ -49,6 +49,7 @@ func (s *CentralServer) Start(addr string) error {
 
 	// Protected routes
 	mux.HandleFunc("/api/wrappers", s.authMiddleware(s.handleWrappers))
+	mux.HandleFunc("/api/retry", s.authMiddleware(s.handleRetry))
 	mux.HandleFunc("/ws", s.authMiddleware(s.handleWebSocket))
 
 	s.server = &http.Server{
@@ -73,6 +74,33 @@ func (s *CentralServer) handleWrappers(w http.ResponseWriter, r *http.Request) {
 
 	wrappers := s.manager.ListConnections()
 	json.NewEncoder(w).Encode(wrappers)
+}
+
+// handleRetry handles retry requests for wrapper connections
+func (s *CentralServer) handleRetry(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	wrapperId := r.URL.Query().Get("wrapper")
+	if wrapperId == "" {
+		http.Error(w, "Wrapper ID is required", http.StatusBadRequest)
+		return
+	}
+
+	wConn, exists := s.manager.GetConnection(wrapperId)
+	if !exists {
+		http.Error(w, "Wrapper not found", http.StatusNotFound)
+		return
+	}
+
+	if err := wConn.Retry(); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // handleWebSocket handles WebSocket connections from web clients
@@ -114,15 +142,22 @@ func (s *CentralServer) handleWebSocket(w http.ResponseWriter, r *http.Request) 
 		_, message, err := ws.ReadMessage()
 		if err != nil {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-				fmt.Printf("Web client error: %v\n", err)
+				fmt.Printf("Web client disconnected: %v\n", err)
 			}
-			break
+			return
 		}
 
-		// Forward message to wrapper
+		// Check if wrapper is still connected before forwarding
+		if wConn.Status != StatusConnected {
+			ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error: Wrapper is %s - %s", wConn.Status, wConn.Error)))
+			continue
+		}
+
+		// Forward message to wrapper with timeout handling
 		if err := wConn.SendMessage(message); err != nil {
 			fmt.Printf("Error forwarding message to wrapper: %v\n", err)
-			break
+			ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error sending command: %v", err)))
+			continue
 		}
 	}
 }

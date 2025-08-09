@@ -122,6 +122,28 @@ func (m *ConnectionManager) ListConnections() []*WrapperConnection {
 	return conns
 }
 
+// Retry initiates a manual reconnection attempt
+func (w *WrapperConnection) Retry() error {
+	w.reconnectMu.Lock()
+	defer w.reconnectMu.Unlock()
+
+	// Don't retry if we're already connected or connecting
+	if w.Status == StatusConnected || w.Status == StatusConnecting {
+		return fmt.Errorf("connection is already %s", w.Status)
+	}
+
+	// Signal the manage routine to retry
+	select {
+	case w.reconnectSignal <- struct{}{}:
+		w.Status = StatusConnecting
+		return nil
+	case <-w.done:
+		return fmt.Errorf("connection is closed")
+	default:
+		return fmt.Errorf("retry already in progress")
+	}
+}
+
 // manage handles the connection lifecycle including automatic reconnection
 func (w *WrapperConnection) manage() {
 	var reconnectAttempts int
@@ -129,34 +151,59 @@ func (w *WrapperConnection) manage() {
 	for {
 		err := w.connect()
 		if err != nil {
+			w.Status = StatusError
+
 			// If authentication failed, don't retry
 			if err.Error() == "authentication failed" {
-				w.Status = StatusError
 				w.Error = "authentication failed"
 				return
 			}
+
+			// Set error message and continue with reconnection
+			w.Error = err.Error()
+
+			select {
+			case <-w.done:
+				return
+			case <-w.reconnectSignal:
+				// Manual retry requested, reset attempts
+				reconnectAttempts = 0
+				continue
+			default:
+				if reconnectAttempts >= maxReconnectAttempts {
+					w.Error = "max reconnection attempts reached. Click retry to try again."
+					// Wait for manual retry
+					select {
+					case <-w.done:
+						return
+					case <-w.reconnectSignal:
+						reconnectAttempts = 0
+						continue
+					}
+				}
+
+				reconnectAttempts++
+				w.Status = StatusReconnecting
+				time.Sleep(reconnectDelay * time.Duration(reconnectAttempts))
+				continue
+			}
 		}
 
-		if err == nil {
-			// Reset reconnect attempts on successful connection
-			reconnectAttempts = 0
-			// Wait for connection to fail
-			<-w.reconnectSignal
-		}
+		// Reset reconnect attempts on successful connection
+		reconnectAttempts = 0
+		w.Error = "" // Clear any previous error
+		w.Status = StatusConnected
 
+		// Wait for connection to fail or manual retry
 		select {
+		case <-w.reconnectSignal:
+			// Manual reconnect requested
+			if w.conn != nil {
+				w.conn.Close()
+			}
+			continue
 		case <-w.done:
 			return
-		default:
-			if reconnectAttempts >= maxReconnectAttempts {
-				w.Status = StatusError
-				w.Error = "max reconnection attempts reached"
-				return
-			}
-
-			reconnectAttempts++
-			w.Status = StatusReconnecting
-			time.Sleep(reconnectDelay * time.Duration(reconnectAttempts))
 		}
 	}
 }
@@ -221,7 +268,10 @@ func (w *WrapperConnection) connect() error {
 // readPump pumps messages from the wrapper connection to all connected clients
 func (w *WrapperConnection) readPump() {
 	defer func() {
-		w.conn.Close()
+		w.Status = StatusDisconnected
+		if w.conn != nil {
+			w.conn.Close()
+		}
 		// Signal for reconnection
 		select {
 		case w.reconnectSignal <- struct{}{}:
@@ -229,9 +279,16 @@ func (w *WrapperConnection) readPump() {
 		}
 	}()
 
+	if w.conn == nil {
+		w.Error = "connection is nil"
+		return
+	}
+
 	w.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 	w.conn.SetPongHandler(func(string) error {
-		w.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		if w.conn != nil {
+			w.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+		}
 		return nil
 	})
 
@@ -242,8 +299,8 @@ func (w *WrapperConnection) readPump() {
 				fmt.Printf("Wrapper connection error: %v\n", err)
 			}
 			w.Status = StatusError
-			w.Error = err.Error()
-			break
+			w.Error = fmt.Sprintf("read error: %v", err)
+			return
 		}
 
 		// Update stats
@@ -257,6 +314,7 @@ func (w *WrapperConnection) readPump() {
 		for client := range w.clients {
 			if err := client.WriteMessage(websocket.TextMessage, message); err != nil {
 				fmt.Printf("Error writing to client: %v\n", err)
+				client.Close()
 				w.RemoveClient(client)
 			}
 		}
@@ -269,21 +327,35 @@ func (w *WrapperConnection) writePump() {
 	ticker := time.NewTicker(54 * time.Second)
 	defer func() {
 		ticker.Stop()
-		w.conn.Close()
+		if w.conn != nil {
+			w.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			w.conn.Close()
+		}
+		w.Status = StatusDisconnected
+		// Signal reconnection needed
+		select {
+		case w.reconnectSignal <- struct{}{}:
+		default:
+		}
 	}()
 
 	for {
 		select {
 		case message, ok := <-w.sendChan:
-			w.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if !ok {
 				// Channel closed
-				w.conn.WriteMessage(websocket.CloseMessage, []byte{})
 				return
 			}
 
+			if w.conn == nil {
+				fmt.Printf("Connection lost while trying to write message\n")
+				return
+			}
+
+			w.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := w.conn.WriteMessage(websocket.TextMessage, message); err != nil {
 				fmt.Printf("Error writing to wrapper: %v\n", err)
+				w.Error = fmt.Sprintf("write error: %v", err)
 				return
 			}
 
@@ -294,8 +366,12 @@ func (w *WrapperConnection) writePump() {
 			w.statsMu.Unlock()
 
 		case <-ticker.C:
+			if w.conn == nil {
+				return
+			}
 			w.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
 			if err := w.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+				fmt.Printf("Ping failed: %v\n", err)
 				return
 			}
 
@@ -321,9 +397,15 @@ func (w *WrapperConnection) RemoveClient(client *websocket.Conn) {
 
 // SendMessage sends a message to the wrapper
 func (w *WrapperConnection) SendMessage(message []byte) error {
+	if w.Status != StatusConnected {
+		return fmt.Errorf("wrapper is not connected (status: %s)", w.Status)
+	}
+
 	select {
 	case w.sendChan <- message:
 		return nil
+	case <-w.done:
+		return fmt.Errorf("connection is closed")
 	default:
 		return fmt.Errorf("message buffer full")
 	}

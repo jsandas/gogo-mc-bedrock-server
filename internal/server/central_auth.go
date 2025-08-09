@@ -8,8 +8,21 @@ import (
 // authMiddleware wraps an http.HandlerFunc with authentication
 func (s *CentralServer) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		// Try to get auth key from header or query parameter
-		authKey := r.Header.Get("X-Auth-Key")
+		// Try to get auth key from different sources
+		var authKey string
+
+		// Check Authorization Bearer token
+		authHeader := r.Header.Get("Authorization")
+		if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
+			authKey = authHeader[7:]
+		}
+
+		// Check X-Auth-Key header
+		if authKey == "" {
+			authKey = r.Header.Get("X-Auth-Key")
+		}
+
+		// Check query parameter
 		if authKey == "" {
 			authKey = r.URL.Query().Get("auth")
 		}
