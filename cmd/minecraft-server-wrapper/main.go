@@ -54,6 +54,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if *mcVersion == "" {
+		fmt.Fprintf(os.Stderr, "Error: Minecraft version is required. Set it using the MINECRAFT_VER environment variable or --mc-version flag\n")
+		os.Exit(1)
+	}
+
 	// Get the working directory
 	var workDir string
 	if *appDir != "" {
@@ -67,13 +72,11 @@ func main() {
 		}
 	}
 
-	// Download server if version is specified
-	if *mcVersion != "" {
-		fmt.Printf("Downloading Minecraft server version %s...\n", *mcVersion)
-		if err := downloader.DownloadMinecraftServer(*mcVersion, workDir, ""); err != nil {
-			fmt.Fprintf(os.Stderr, "Error downloading server: %v\n", err)
-			os.Exit(1)
-		}
+	// Download server
+	fmt.Printf("Downloading Minecraft server version %s...\n", *mcVersion)
+	if err := downloader.DownloadMinecraftServer(*mcVersion, workDir, ""); err != nil {
+		fmt.Fprintf(os.Stderr, "Error downloading server: %v\n", err)
+		os.Exit(1)
 	}
 
 	// Update server properties from environment variables
