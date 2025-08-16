@@ -50,6 +50,7 @@ func (s *CentralServer) Start(addr string) error {
 	// Protected routes
 	mux.HandleFunc("/api/wrappers", s.authMiddleware(s.handleWrappers))
 	mux.HandleFunc("/api/retry", s.authMiddleware(s.handleRetry))
+	mux.HandleFunc("/api/serverstatus", s.authMiddleware(s.handleServerStatus))
 	mux.HandleFunc("/ws", s.authMiddleware(s.handleWebSocket))
 
 	s.server = &http.Server{
@@ -74,6 +75,34 @@ func (s *CentralServer) handleWrappers(w http.ResponseWriter, r *http.Request) {
 
 	wrappers := s.manager.ListConnections()
 	json.NewEncoder(w).Encode(wrappers)
+}
+
+// handleServerStatus handles requests for Minecraft server status
+func (s *CentralServer) handleServerStatus(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	wrapperId := r.URL.Query().Get("wrapper")
+	if wrapperId == "" {
+		http.Error(w, "Wrapper ID is required", http.StatusBadRequest)
+		return
+	}
+
+	wConn, exists := s.manager.GetConnection(wrapperId)
+	if !exists {
+		http.Error(w, "Wrapper not found", http.StatusNotFound)
+		return
+	}
+
+	status, err := wConn.GetServerStatus()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(status)
 }
 
 // handleRetry handles retry requests for wrapper connections

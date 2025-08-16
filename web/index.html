@@ -104,6 +104,31 @@
             color: #666;
             margin-top: 10px;
         }
+        .server-info {
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        .server-info h3 {
+            margin-top: 0;
+            margin-bottom: 10px;
+        }
+        .server-info .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        .server-info .info-item {
+            background: white;
+            padding: 8px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .server-info .label {
+            font-weight: bold;
+            color: #666;
+        }
         .console-controls {
             display: flex;
             gap: 10px;
@@ -299,6 +324,10 @@
                     <div>Messages Received: ${wrapper.stats.messages_received}</div>
                     <div>Reconnections: ${wrapper.stats.reconnections}</div>
                 </div>
+                <div class="server-info" id="server-info-${wrapper.id}">
+                    <h3>Server Information</h3>
+                    <div id="server-status-${wrapper.id}">Loading server status...</div>
+                </div>
                 <div class="console" id="console-${wrapper.id}"></div>
                 <div class="console-controls">
                     <input type="text" id="input-${wrapper.id}" placeholder="Enter command..." onkeydown="handleInput(event, '${wrapper.id}')">
@@ -307,6 +336,58 @@
                 </div>
             `;
             return container;
+        }
+
+        async function updateServerStatus(wrapperId) {
+            const key = getAuthKey();
+            if (!key) return;
+
+            try {
+                const response = await fetch(`/api/serverstatus?wrapper=${wrapperId}`, {
+                    headers: {
+                        'X-Auth-Key': key
+                    }
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch server status');
+                }
+
+                const status = await response.json();
+                const statusDiv = document.getElementById(`server-status-${wrapperId}`);
+                statusDiv.innerHTML = `
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="label">Server Name</div>
+                            <div>${status.serverName}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">Version</div>
+                            <div>${status.versionName}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">Level Name</div>
+                            <div>${status.levelName}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">Game Mode</div>
+                            <div>${status.gameMode}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="label">Players</div>
+                            <div>${status.playerCount} / ${status.maxPlayerCount}</div>
+                        </div>
+                    </div>
+                `;
+            } catch (error) {
+                const statusDiv = document.getElementById(`server-status-${wrapperId}`);
+                if (error.message.includes('Failed to fetch')) {
+                    statusDiv.innerHTML = `<div class="error">Server status unavailable. Will retry automatically.</div>`;
+                } else {
+                    statusDiv.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                }
+                console.error(`Error fetching server status for ${wrapperId}:`, error);
+            }
         }
 
         function updateWrappers() {
@@ -351,6 +432,9 @@
 
                             wrappers.set(wrapper.id, wrapper);
                             connectWebSocket(wrapper);
+                            if (wrapper.status === 'connected') {
+                                updateServerStatus(wrapper.id);
+                            }
                         } else {
                             // Update existing wrapper
                             const existingWrapper = wrappers.get(wrapper.id);
@@ -371,6 +455,7 @@
 
                                 if (existingWrapper.status !== 'connected' && wrapper.status === 'connected') {
                                     connectWebSocket(wrapper);
+                                    updateServerStatus(wrapper.id);
                                 }
                             }
                         }
@@ -398,6 +483,10 @@
                 console.innerHTML = history.join('\n');
                 console.scrollTop = console.scrollHeight;
             }
+
+            ws.onopen = () => {
+                updateServerStatus(wrapper.id);
+            };
 
             ws.onmessage = (event) => {
                 // If the message starts with [ it's likely a new server message with timestamp
@@ -431,9 +520,19 @@
             }
         }
 
+        // Function to update all connected wrappers' server status
+        function updateAllServerStatus() {
+            wrappers.forEach(wrapper => {
+                if (wrapper.status === 'connected') {
+                    updateServerStatus(wrapper.id);
+                }
+            });
+        }
+
         // Initial load and periodic updates
         updateWrappers();
         setInterval(updateWrappers, 5000);
+        setInterval(updateAllServerStatus, 30000); // Update server status every 30 seconds
     </script>
 </body>
 </html>

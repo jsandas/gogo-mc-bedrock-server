@@ -4,10 +4,13 @@ import (
 	"encoding/base64"
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/jsandas/gogo-mc-bedrock-server/internal/raknet"
 )
 
 // WrapperStatus represents the current status of a wrapper connection
@@ -409,6 +412,51 @@ func (w *WrapperConnection) SendMessage(message []byte) error {
 	default:
 		return fmt.Errorf("message buffer full")
 	}
+}
+
+// GetServerStatus gets the current Minecraft server status using GetPong
+func (w *WrapperConnection) GetServerStatus() (map[string]interface{}, error) {
+	// Extract host from the address
+	addr := w.Address
+	if addr == "" {
+		return nil, fmt.Errorf("wrapper address is empty")
+	}
+
+	// Convert from ws:// to regular address and extract host
+	addr = strings.TrimPrefix(addr, "ws://")
+	addr = strings.TrimSuffix(addr, "/ws")
+
+	// Split host and port
+	host := addr
+	if idx := strings.LastIndex(addr, ":"); idx != -1 {
+		host = addr[:idx]
+	}
+	if host == "localhost" {
+		host = "127.0.0.1"
+	}
+
+	// Check if we have a custom port from environment
+	serverPort := "19132" // Default Minecraft Bedrock port
+	if port := os.Getenv("CFG_SERVER_PORT"); port != "" {
+		serverPort = port
+	}
+
+	// Combine host and Minecraft server port
+	mcAddr := fmt.Sprintf("%s:%s", host, serverPort)
+
+	pong, err := raknet.GetPong(mcAddr)
+	if err != nil {
+		return nil, fmt.Errorf("error getting server status from %s: %v", mcAddr, err)
+	}
+
+	return map[string]interface{}{
+		"serverName":     pong.ServerName,
+		"versionName":    pong.VersionName,
+		"levelName":      pong.LevelName,
+		"gameMode":       pong.GameMode,
+		"playerCount":    pong.PlayerCount,
+		"maxPlayerCount": pong.MaxPlayerCount,
+	}, nil
 }
 
 // DisconnectAll closes all wrapper connections
