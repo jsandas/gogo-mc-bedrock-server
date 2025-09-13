@@ -17,3 +17,19 @@ jobs:
 
   security:
     uses: jsandas/github-actions/.github/workflows/golang-security.yml@main
+
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: [lint]
+    
+    steps:
+    - uses: actions/checkout@v5
+      
+    - uses: actions/setup-go@v6
+      with:
+        go-version-file: "go.mod"
+        cache: true
+
+    - name: Run unit tests
+      run: make test-unit

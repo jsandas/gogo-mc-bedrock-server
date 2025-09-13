@@ -1,2 +1,4 @@
 /minecraft-server-wrapper
 config.json
+# Added by goreleaser init:
+dist/
