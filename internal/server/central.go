@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -54,8 +55,9 @@ func (s *CentralServer) Start(addr string) error {
 	mux.HandleFunc("/ws", s.authMiddleware(s.handleWebSocket))
 
 	s.server = &http.Server{
-		Addr:    addr,
-		Handler: mux,
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 3 * time.Second,
 	}
 
 	return s.server.ListenAndServe()
