@@ -1,0 +1,19 @@
+name: CI Tests
+
+on:
+  workflow_dispatch: {}
+  push:
+    branches:
+      - '*'
+    paths:
+      - "**/*.go"
+      - "**/go.mod"
+      - "**/go.sum"
+      - ".github/workflows/ci.yml"
+
+jobs:
+  lint:
+    uses: jsandas/github-actions/.github/workflows/golang-lint.yml@main
+
+  security:
+    uses: jsandas/github-actions/.github/workflows/golang-security.yml@main
