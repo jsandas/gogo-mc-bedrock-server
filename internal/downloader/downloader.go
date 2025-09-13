@@ -113,8 +113,10 @@ func extractFile(file *zip.File, destDir string) error {
 			if err == io.EOF {
 				break
 			}
+
 			return err
 		}
 	}
+
 	return nil
 }
