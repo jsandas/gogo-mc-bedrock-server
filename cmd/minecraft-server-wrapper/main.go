@@ -78,13 +78,16 @@ func main() {
 
 	// Download server
 	fmt.Printf("Downloading Minecraft server version %s...\n", *mcVersion)
-	if err := downloader.DownloadMinecraftServer(*mcVersion, workDir, ""); err != nil {
+
+	err := downloader.DownloadMinecraftServer(*mcVersion, workDir, "")
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error downloading server: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Update server properties from environment variables
-	if err := config.UpdateServerProperties(workDir); err != nil {
+	err = config.UpdateServerProperties(workDir)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error updating server properties: %v\n", err)
 		os.Exit(1)
 	}
@@ -93,7 +96,8 @@ func main() {
 	cmdRunner := runner.New(*command)
 
 	// Start the command
-	if err := cmdRunner.Start(); err != nil {
+	err = cmdRunner.Start()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting command: %v\n", err)
 		os.Exit(1)
 	}
@@ -105,14 +109,16 @@ func main() {
 	})
 
 	go func() {
-		if err := srv.Start(*listenAddress); err != nil {
+		err := srv.Start(*listenAddress)
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting web server: %v\n", err)
 			os.Exit(1)
 		}
 	}()
 
 	// Wait for the command to complete
-	if err := cmdRunner.Wait(); err != nil {
+	err = cmdRunner.Wait()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running command: %v\n", err)
 		os.Exit(1)
 	}

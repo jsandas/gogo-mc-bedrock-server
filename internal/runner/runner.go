@@ -47,7 +47,8 @@ func (r *Runner) Start() error {
 	}
 
 	// Start command
-	if err := r.cmd.Start(); err != nil {
+	err = r.cmd.Start()
+	if err != nil {
 		return fmt.Errorf("error starting command: %v", err)
 	}
 

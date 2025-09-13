@@ -109,12 +109,15 @@ func createTestZip(t *testing.T, files map[string][]byte) *bytes.Buffer {
 		if err != nil {
 			t.Fatalf("Failed to create file in zip: %v", err)
 		}
-		if _, err := f.Write(content); err != nil {
+
+		_, err = f.Write(content)
+		if err != nil {
 			t.Fatalf("Failed to write content to zip: %v", err)
 		}
 	}
 
-	if err := zipWriter.Close(); err != nil {
+	err := zipWriter.Close()
+	if err != nil {
 		t.Fatalf("Failed to close zip writer: %v", err)
 	}
 

@@ -45,7 +45,9 @@ func TestRunner_BasicIO(t *testing.T) {
 
 	// Create and start runner
 	r := New(scriptPath)
-	if err := r.Start(); err != nil {
+
+	err := r.Start()
+	if err != nil {
 		t.Fatalf("Failed to start runner: %v", err)
 	}
 
@@ -80,7 +82,9 @@ func TestRunner_BasicIO(t *testing.T) {
 
 	// Close stdin and wait for process to complete
 	close(r.stdin)
-	if err := r.Wait(); err != nil {
+
+	err = r.Wait()
+	if err != nil {
 		t.Fatalf("Process failed: %v", err)
 	}
 
@@ -128,7 +132,9 @@ func TestRunner_LargeInput(t *testing.T) {
 
 	// Create and start runner
 	r := New(scriptPath)
-	if err := r.Start(); err != nil {
+
+	err := r.Start()
+	if err != nil {
 		t.Fatalf("Failed to start runner: %v", err)
 	}
 
@@ -164,7 +170,9 @@ func TestRunner_LargeInput(t *testing.T) {
 
 	// Close stdin and wait for process to complete
 	close(r.stdin)
-	if err := r.Wait(); err != nil {
+
+	err = r.Wait()
+	if err != nil {
 		t.Fatalf("Process failed: %v", err)
 	}
 
@@ -198,7 +206,9 @@ func TestRunner_MultipleWriters(t *testing.T) {
 
 	// Create and start runner
 	r := New(scriptPath)
-	if err := r.Start(); err != nil {
+
+	err := r.Start()
+	if err != nil {
 		t.Fatalf("Failed to start runner: %v", err)
 	}
 
@@ -246,7 +256,9 @@ func TestRunner_MultipleWriters(t *testing.T) {
 
 	// Close stdin and wait for process to complete
 	close(r.stdin)
-	if err := r.Wait(); err != nil {
+
+	err = r.Wait()
+	if err != nil {
 		t.Fatalf("Process failed: %v", err)
 	}
 

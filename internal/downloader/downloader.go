@@ -87,7 +87,8 @@ func extractFile(file *zip.File, destDir string) error {
 	}
 
 	// Create parent directories if they don't exist
-	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+	err := os.MkdirAll(filepath.Dir(destPath), 0755)
+	if err != nil {
 		return err
 	}
 

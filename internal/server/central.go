@@ -124,7 +124,8 @@ func (s *CentralServer) handleRetry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := wConn.Retry(); err != nil {
+	err := wConn.Retry()
+	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
@@ -185,7 +186,8 @@ func (s *CentralServer) handleWebSocket(w http.ResponseWriter, r *http.Request) 
 		}
 
 		// Forward message to wrapper with timeout handling
-		if err := wConn.SendMessage(message); err != nil {
+		err = wConn.SendMessage(message)
+		if err != nil {
 			fmt.Printf("Error forwarding message to wrapper: %v\n", err)
 			ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error sending command: %v", err)))
 

@@ -332,7 +332,8 @@ func (w *WrapperConnection) readPump() {
 		w.clientsMu.RLock()
 
 		for client := range w.clients {
-			if err := client.WriteMessage(websocket.TextMessage, message); err != nil {
+			err := client.WriteMessage(websocket.TextMessage, message)
+			if err != nil {
 				fmt.Printf("Error writing to client: %v\n", err)
 				client.Close()
 				w.RemoveClient(client)
@@ -378,7 +379,9 @@ func (w *WrapperConnection) writePump() {
 			}
 
 			w.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := w.conn.WriteMessage(websocket.TextMessage, message); err != nil {
+
+			err := w.conn.WriteMessage(websocket.TextMessage, message)
+			if err != nil {
 				fmt.Printf("Error writing to wrapper: %v\n", err)
 				w.Error = fmt.Sprintf("write error: %v", err)
 
@@ -395,8 +398,11 @@ func (w *WrapperConnection) writePump() {
 			if w.conn == nil {
 				return
 			}
+
 			w.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err := w.conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+
+			err := w.conn.WriteMessage(websocket.PingMessage, nil)
+			if err != nil {
 				fmt.Printf("Ping failed: %v\n", err)
 				return
 			}

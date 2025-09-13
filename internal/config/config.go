@@ -73,7 +73,8 @@ func UpdateServerProperties(appDir string) error {
 
 	// Only write the file if we found actual changes
 	if updated {
-		if err := writePropertiesFile(propsFile, newLines); err != nil {
+		err := writePropertiesFile(propsFile, newLines)
+		if err != nil {
 			return fmt.Errorf("error writing properties file: %v", err)
 		}
 	}
@@ -95,7 +96,8 @@ func readPropertiesFile(filePath string) ([]string, error) {
 		lines = append(lines, scanner.Text())
 	}
 
-	if err := scanner.Err(); err != nil {
+	err = scanner.Err()
+	if err != nil {
 		return nil, err
 	}
 
@@ -111,7 +113,8 @@ func writePropertiesFile(filePath string, lines []string) error {
 
 	writer := bufio.NewWriter(file)
 	for _, line := range lines {
-		if _, err := writer.WriteString(line + "\n"); err != nil {
+		_, err := writer.WriteString(line + "\n")
+		if err != nil {
 			return err
 		}
 	}

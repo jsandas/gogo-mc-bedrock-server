@@ -148,7 +148,8 @@ func main() {
 	}
 
 	// Graceful shutdown
-	if err := srv.Stop(); err != nil {
+	err = srv.Stop()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error during shutdown: %v\n", err)
 	}
 
