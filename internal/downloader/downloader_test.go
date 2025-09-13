@@ -86,7 +86,7 @@ func TestDownloadMinecraftServer(t *testing.T) {
 	}
 }
 
-// createTestZip creates a zip file in memory with the given files
+// createTestZip creates a zip file in memory with the given files.
 func createTestZip(t *testing.T, files map[string][]byte) *bytes.Buffer {
 	buffer := new(bytes.Buffer)
 	zipWriter := zip.NewWriter(buffer)

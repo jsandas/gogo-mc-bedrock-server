@@ -19,7 +19,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// Server handles the HTTP endpoints and web UI
+// Server handles the HTTP endpoints and web UI.
 type Server struct {
 	runner       *runner.Runner
 	connections  map[*websocket.Conn]bool
@@ -28,13 +28,13 @@ type Server struct {
 	authKey      string // Pre-shared key for authentication
 }
 
-// ServerConfig holds configuration for the server
+// ServerConfig holds configuration for the server.
 type ServerConfig struct {
 	Runner  *runner.Runner
 	AuthKey string
 }
 
-// New creates a new Server instance
+// New creates a new Server instance.
 func New(config ServerConfig) *Server {
 	srv := &Server{
 		runner:      config.Runner,
@@ -48,7 +48,7 @@ func New(config ServerConfig) *Server {
 	return srv
 }
 
-// Start begins the HTTP server
+// Start begins the HTTP server.
 func (s *Server) Start(addr string) error {
 	// Create a new ServeMux for our routes
 	mux := http.NewServeMux()

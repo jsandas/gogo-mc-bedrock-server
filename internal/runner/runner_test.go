@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// createEchoScript creates a temporary script that echoes input and some test output
+// createEchoScript creates a temporary script that echoes input and some test output.
 func createEchoScript(t *testing.T) string {
 	t.Helper()
 

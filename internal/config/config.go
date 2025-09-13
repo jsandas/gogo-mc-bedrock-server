@@ -9,7 +9,7 @@ import (
 )
 
 // UpdateServerProperties reads environment variables prefixed with CFG_ and updates
-// the server.properties file accordingly
+// the server.properties file accordingly.
 func UpdateServerProperties(appDir string) error {
 	propsFile := filepath.Join(appDir, "server.properties")
 

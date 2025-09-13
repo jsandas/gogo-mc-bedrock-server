@@ -12,7 +12,7 @@ import (
 // DownloadMinecraftServer downloads and extracts the Minecraft Bedrock server
 // minecraftVer is the version of the server to download (e.g. "1.20.0.01")
 // appDir is the directory where the server should be extracted
-// baseURL is an optional URL to download from (used for testing)
+// baseURL is an optional URL to download from (used for testing).
 func DownloadMinecraftServer(minecraftVer string, appDir string, baseURL string) error {
 	// Create temporary file for the zip
 	tmpFile, err := os.CreateTemp("", "bedrock-server-*.zip")

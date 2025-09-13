@@ -8,7 +8,7 @@ import (
 	"sync"
 )
 
-// Runner manages the execution of a command and its I/O
+// Runner manages the execution of a command and its I/O.
 type Runner struct {
 	cmd        *exec.Cmd
 	stdin      chan string
@@ -16,7 +16,7 @@ type Runner struct {
 	done       chan struct{} // Channel to signal when the command is done
 }
 
-// New creates a new Runner instance
+// New creates a new Runner instance.
 func New(command string, args ...string) *Runner {
 	return &Runner{
 		cmd:        exec.Command(command, args...),
@@ -26,7 +26,7 @@ func New(command string, args ...string) *Runner {
 	}
 }
 
-// Start begins the command execution and sets up I/O handling
+// Start begins the command execution and sets up I/O handling.
 func (r *Runner) Start() error {
 	// Create stdin pipe
 	stdin, err := r.cmd.StdinPipe()
@@ -110,22 +110,22 @@ func (r *Runner) Start() error {
 	return nil
 }
 
-// WriteInput sends input to the running command
+// WriteInput sends input to the running command.
 func (r *Runner) WriteInput(input string) {
 	r.stdin <- input
 }
 
-// GetOutputChan returns a channel that receives command output in real-time
+// GetOutputChan returns a channel that receives command output in real-time.
 func (r *Runner) GetOutputChan() <-chan string {
 	return r.outputChan
 }
 
-// Done returns a channel that's closed when the command completes
+// Done returns a channel that's closed when the command completes.
 func (r *Runner) Done() <-chan struct{} {
 	return r.done
 }
 
-// Wait waits for the command to complete
+// Wait waits for the command to complete.
 func (r *Runner) Wait() error {
 	return r.cmd.Wait()
 }

@@ -11,13 +11,13 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-// CentralServerConfig holds configuration for the central server
+// CentralServerConfig holds configuration for the central server.
 type CentralServerConfig struct {
 	Manager *ConnectionManager
 	AuthKey string
 }
 
-// CentralServer represents the central management server
+// CentralServer represents the central management server.
 type CentralServer struct {
 	manager    *ConnectionManager
 	server     *http.Server
@@ -27,7 +27,7 @@ type CentralServer struct {
 	authKey    string
 }
 
-// NewCentralServer creates a new central server instance
+// NewCentralServer creates a new central server instance.
 func NewCentralServer(config CentralServerConfig) *CentralServer {
 	return &CentralServer{
 		manager: config.Manager,
@@ -41,7 +41,7 @@ func NewCentralServer(config CentralServerConfig) *CentralServer {
 	}
 }
 
-// Start starts the HTTP server
+// Start starts the HTTP server.
 func (s *CentralServer) Start(addr string) error {
 	mux := http.NewServeMux()
 
@@ -63,12 +63,12 @@ func (s *CentralServer) Start(addr string) error {
 	return s.server.ListenAndServe()
 }
 
-// Stop gracefully shuts down the server
+// Stop gracefully shuts down the server.
 func (s *CentralServer) Stop() error {
 	return s.server.Shutdown(context.Background())
 }
 
-// handleWrappers handles requests for wrapper information
+// handleWrappers handles requests for wrapper information.
 func (s *CentralServer) handleWrappers(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -79,7 +79,7 @@ func (s *CentralServer) handleWrappers(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(wrappers)
 }
 
-// handleServerStatus handles requests for Minecraft server status
+// handleServerStatus handles requests for Minecraft server status.
 func (s *CentralServer) handleServerStatus(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -107,7 +107,7 @@ func (s *CentralServer) handleServerStatus(w http.ResponseWriter, r *http.Reques
 	json.NewEncoder(w).Encode(status)
 }
 
-// handleRetry handles retry requests for wrapper connections
+// handleRetry handles retry requests for wrapper connections.
 func (s *CentralServer) handleRetry(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -135,7 +135,7 @@ func (s *CentralServer) handleRetry(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-// handleWebSocket handles WebSocket connections from web clients
+// handleWebSocket handles WebSocket connections from web clients.
 func (s *CentralServer) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	wrapperId := r.URL.Query().Get("wrapper")
 	if wrapperId == "" {

@@ -13,7 +13,7 @@ import (
 	"github.com/jsandas/gogo-mc-bedrock-server/internal/raknet"
 )
 
-// WrapperStatus represents the current status of a wrapper connection
+// WrapperStatus represents the current status of a wrapper connection.
 type WrapperStatus string
 
 const (
@@ -23,11 +23,13 @@ const (
 	StatusError        WrapperStatus = "error"
 	StatusReconnecting WrapperStatus = "reconnecting"
 
+	StatusAuthFailed = "authentication failed"
+
 	maxReconnectAttempts = 5
 	reconnectDelay       = 5 * time.Second
 )
 
-// ConnectionStats tracks connection statistics
+// ConnectionStats tracks connection statistics.
 type ConnectionStats struct {
 	ConnectedAt      time.Time `json:"connected_at,omitempty"`
 	LastMessageAt    time.Time `json:"last_message_at,omitempty"`
@@ -36,7 +38,7 @@ type ConnectionStats struct {
 	Reconnections    int       `json:"reconnections"`
 }
 
-// WrapperConnection represents a connection to a remote Minecraft server wrapper
+// WrapperConnection represents a connection to a remote Minecraft server wrapper.
 type WrapperConnection struct {
 	ID        string          `json:"id"`
 	Name      string          `json:"name"`
@@ -59,20 +61,20 @@ type WrapperConnection struct {
 	statsMu         sync.RWMutex
 }
 
-// ConnectionManager manages multiple wrapper connections
+// ConnectionManager manages multiple wrapper connections.
 type ConnectionManager struct {
 	connections map[string]*WrapperConnection
 	mu          sync.RWMutex
 }
 
-// NewConnectionManager creates a new connection manager
+// NewConnectionManager creates a new connection manager.
 func NewConnectionManager() *ConnectionManager {
 	return &ConnectionManager{
 		connections: make(map[string]*WrapperConnection),
 	}
 }
 
-// Connect establishes a connection to a remote wrapper
+// Connect establishes a connection to a remote wrapper.
 func (m *ConnectionManager) Connect(id, name, address, username, password, sharedKey string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -106,7 +108,7 @@ func (m *ConnectionManager) Connect(id, name, address, username, password, share
 	return nil
 }
 
-// GetConnection returns a connection by ID
+// GetConnection returns a connection by ID.
 func (m *ConnectionManager) GetConnection(id string) (*WrapperConnection, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -116,7 +118,7 @@ func (m *ConnectionManager) GetConnection(id string) (*WrapperConnection, bool) 
 	return conn, exists
 }
 
-// ListConnections returns a list of all active connections
+// ListConnections returns a list of all active connections.
 func (m *ConnectionManager) ListConnections() []*WrapperConnection {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -129,7 +131,7 @@ func (m *ConnectionManager) ListConnections() []*WrapperConnection {
 	return conns
 }
 
-// Retry initiates a manual reconnection attempt
+// Retry initiates a manual reconnection attempt.
 func (w *WrapperConnection) Retry() error {
 	w.reconnectMu.Lock()
 	defer w.reconnectMu.Unlock()
@@ -151,7 +153,7 @@ func (w *WrapperConnection) Retry() error {
 	}
 }
 
-// manage handles the connection lifecycle including automatic reconnection
+// manage handles the connection lifecycle including automatic reconnection.
 func (w *WrapperConnection) manage() {
 	var reconnectAttempts int
 
@@ -161,8 +163,8 @@ func (w *WrapperConnection) manage() {
 			w.Status = StatusError
 
 			// If authentication failed, don't retry
-			if err.Error() == "authentication failed" {
-				w.Error = "authentication failed"
+			if err.Error() == StatusAuthFailed {
+				w.Error = StatusAuthFailed
 				return
 			}
 
@@ -218,7 +220,7 @@ func (w *WrapperConnection) manage() {
 	}
 }
 
-// connect establishes a connection to the wrapper
+// connect establishes a connection to the wrapper.
 func (w *WrapperConnection) connect() error {
 	w.reconnectMu.Lock()
 	defer w.reconnectMu.Unlock()
@@ -254,8 +256,8 @@ func (w *WrapperConnection) connect() error {
 
 		if resp != nil {
 			if resp.StatusCode == http.StatusUnauthorized {
-				w.Error = "authentication failed"
-				return fmt.Errorf("authentication failed")
+				w.Error = StatusAuthFailed
+				return fmt.Errorf("%s", StatusAuthFailed)
 			}
 
 			errMsg = fmt.Sprintf("%v (HTTP Status: %d)", err, resp.StatusCode)
@@ -280,7 +282,7 @@ func (w *WrapperConnection) connect() error {
 	return nil
 }
 
-// readPump pumps messages from the wrapper connection to all connected clients
+// readPump pumps messages from the wrapper connection to all connected clients.
 func (w *WrapperConnection) readPump() {
 	defer func() {
 		w.Status = StatusDisconnected
@@ -344,7 +346,7 @@ func (w *WrapperConnection) readPump() {
 	}
 }
 
-// writePump pumps messages from the clients to the wrapper connection
+// writePump pumps messages from the clients to the wrapper connection.
 func (w *WrapperConnection) writePump() {
 	ticker := time.NewTicker(54 * time.Second)
 
@@ -413,21 +415,21 @@ func (w *WrapperConnection) writePump() {
 	}
 }
 
-// AddClient adds a web client connection to this wrapper
+// AddClient adds a web client connection to this wrapper.
 func (w *WrapperConnection) AddClient(client *websocket.Conn) {
 	w.clientsMu.Lock()
 	w.clients[client] = true
 	w.clientsMu.Unlock()
 }
 
-// RemoveClient removes a web client connection
+// RemoveClient removes a web client connection.
 func (w *WrapperConnection) RemoveClient(client *websocket.Conn) {
 	w.clientsMu.Lock()
 	delete(w.clients, client)
 	w.clientsMu.Unlock()
 }
 
-// SendMessage sends a message to the wrapper
+// SendMessage sends a message to the wrapper.
 func (w *WrapperConnection) SendMessage(message []byte) error {
 	if w.Status != StatusConnected {
 		return fmt.Errorf("wrapper is not connected (status: %s)", w.Status)
@@ -443,7 +445,7 @@ func (w *WrapperConnection) SendMessage(message []byte) error {
 	}
 }
 
-// GetServerStatus gets the current Minecraft server status using GetPong
+// GetServerStatus gets the current Minecraft server status using GetPong.
 func (w *WrapperConnection) GetServerStatus() (map[string]interface{}, error) {
 	// Extract host from the address
 	addr := w.Address
@@ -489,7 +491,7 @@ func (w *WrapperConnection) GetServerStatus() (map[string]interface{}, error) {
 	}, nil
 }
 
-// DisconnectAll closes all wrapper connections
+// DisconnectAll closes all wrapper connections.
 func (m *ConnectionManager) DisconnectAll() {
 	m.mu.Lock()
 	defer m.mu.Unlock()

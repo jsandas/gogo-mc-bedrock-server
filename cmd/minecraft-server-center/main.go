@@ -12,7 +12,7 @@ import (
 	"github.com/jsandas/gogo-mc-bedrock-server/internal/server"
 )
 
-// WrapperConfig represents the configuration for a single Minecraft server wrapper
+// WrapperConfig represents the configuration for a single Minecraft server wrapper.
 type WrapperConfig struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
@@ -22,7 +22,7 @@ type WrapperConfig struct {
 	SharedKey string `json:"shared_key"` // Key that must match the wrapper's AUTH_KEY
 }
 
-// Config represents the central server configuration
+// Config represents the central server configuration.
 type Config struct {
 	ListenAddress string          `json:"listen_address"`
 	AuthKey       string          `json:"auth_key,omitempty"`

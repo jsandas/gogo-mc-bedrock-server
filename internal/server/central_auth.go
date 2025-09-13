@@ -5,7 +5,7 @@ import (
 	"net/http"
 )
 
-// authMiddleware wraps an http.HandlerFunc with authentication
+// authMiddleware wraps an http.HandlerFunc with authentication.
 func (s *CentralServer) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Try to get auth key from different sources
