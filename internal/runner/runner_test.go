@@ -12,6 +12,7 @@ import (
 // createEchoScript creates a temporary script that echoes input and some test output
 func createEchoScript(t *testing.T) string {
 	t.Helper()
+
 	content := `#!/bin/sh
 # Increase buffer size for stdin
 if [ -n "$(command -v stdbuf)" ]; then
@@ -30,10 +31,12 @@ fi
 `
 	tmpDir := t.TempDir()
 	scriptPath := filepath.Join(tmpDir, "echo.sh")
+
 	err := os.WriteFile(scriptPath, []byte(content), 0755)
 	if err != nil {
 		t.Fatalf("Failed to create test script: %v", err)
 	}
+
 	return scriptPath
 }
 
@@ -64,6 +67,7 @@ func TestRunner_BasicIO(t *testing.T) {
 		for output := range r.GetOutputChan() {
 			outputs = append(outputs, output)
 		}
+
 		close(done)
 	}()
 
@@ -103,6 +107,7 @@ func TestRunner_BasicIO(t *testing.T) {
 			if strings.Contains(output, "ECHO: "+input) {
 				foundStdout = true
 			}
+
 			if strings.Contains(output, "ERROR: "+input) {
 				foundStderr = true
 			}
@@ -111,6 +116,7 @@ func TestRunner_BasicIO(t *testing.T) {
 		if !foundStdout {
 			t.Errorf("Expected to find '%s' in stdout", input)
 		}
+
 		if !foundStderr {
 			t.Errorf("Expected to find '%s' in stderr", input)
 		}
@@ -141,6 +147,7 @@ func TestRunner_LargeInput(t *testing.T) {
 	// Start collecting outputs
 	go func() {
 		defer close(done)
+
 		for output := range r.GetOutputChan() {
 			outputs = append(outputs, output)
 			// Check if we found our input
@@ -167,8 +174,10 @@ func TestRunner_LargeInput(t *testing.T) {
 		// Success case - found the expected output
 	case <-time.After(5 * time.Second):
 		t.Errorf("Large input was not properly echoed after 5 seconds. Got %d lines of output", len(outputs))
+
 		if len(outputs) > 0 {
 			t.Logf("First output line: %s", outputs[0])
+
 			if len(outputs) > 1 {
 				t.Logf("Second output line: %s", outputs[1])
 			}
@@ -205,12 +214,15 @@ func TestRunner_MultipleWriters(t *testing.T) {
 		for output := range r.GetOutputChan() {
 			outputs = append(outputs, output)
 		}
+
 		close(done)
 	}()
 
 	// Launch multiple goroutines writing simultaneously
 	const numWriters = 10
+
 	const numWrites = 10
+
 	writersDone := make(chan bool)
 
 	for i := 0; i < numWriters; i++ {
@@ -219,6 +231,7 @@ func TestRunner_MultipleWriters(t *testing.T) {
 				input := fmt.Sprintf("writer-%d-write-%d", id, j)
 				r.WriteInput(input)
 			}
+
 			writersDone <- true
 		}(i)
 	}

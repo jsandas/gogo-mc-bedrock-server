@@ -24,12 +24,15 @@ func init() {
 	if envListenAddress := os.Getenv("LISTEN_ADDRESS"); envListenAddress != "" {
 		flag.Set("listen", envListenAddress)
 	}
+
 	if envAppDir := os.Getenv("APP_DIR"); envAppDir != "" {
 		flag.Set("app-dir", envAppDir)
 	}
+
 	if envMcVer := os.Getenv("MINECRAFT_VER"); envMcVer != "" {
 		flag.Set("mc-version", envMcVer)
 	}
+
 	if envAuthKey := os.Getenv("AUTH_KEY"); envAuthKey != "" {
 		flag.Set("auth-key", envAuthKey)
 	}
@@ -65,6 +68,7 @@ func main() {
 		workDir = *appDir
 	} else {
 		var err error
+
 		workDir, err = os.Getwd()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error getting working directory: %v\n", err)
@@ -99,6 +103,7 @@ func main() {
 		Runner:  cmdRunner,
 		AuthKey: *authKey,
 	})
+
 	go func() {
 		if err := srv.Start(*listenAddress); err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting web server: %v\n", err)

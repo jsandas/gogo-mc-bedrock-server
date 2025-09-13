@@ -26,11 +26,13 @@ func DownloadMinecraftServer(minecraftVer string, appDir string, baseURL string)
 	if baseURL == "" {
 		baseURL = defaultBaseURL
 	}
+
 	url := fmt.Sprintf("%s/bedrock-server-%s.zip", baseURL, minecraftVer)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
+
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -105,5 +107,6 @@ func extractFile(file *zip.File, destDir string) error {
 
 	// Copy the contents
 	_, err = io.Copy(dest, src)
+
 	return err
 }

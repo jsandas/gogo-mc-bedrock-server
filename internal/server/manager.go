@@ -110,7 +110,9 @@ func (m *ConnectionManager) Connect(id, name, address, username, password, share
 func (m *ConnectionManager) GetConnection(id string) (*WrapperConnection, bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+
 	conn, exists := m.connections[id]
+
 	return conn, exists
 }
 
@@ -118,10 +120,12 @@ func (m *ConnectionManager) GetConnection(id string) (*WrapperConnection, bool) 
 func (m *ConnectionManager) ListConnections() []*WrapperConnection {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
+
 	conns := make([]*WrapperConnection, 0, len(m.connections))
 	for _, conn := range m.connections {
 		conns = append(conns, conn)
 	}
+
 	return conns
 }
 
@@ -187,7 +191,9 @@ func (w *WrapperConnection) manage() {
 
 				reconnectAttempts++
 				w.Status = StatusReconnecting
+
 				time.Sleep(reconnectDelay * time.Duration(reconnectAttempts))
+
 				continue
 			}
 		}
@@ -204,6 +210,7 @@ func (w *WrapperConnection) manage() {
 			if w.conn != nil {
 				w.conn.Close()
 			}
+
 			continue
 		case <-w.done:
 			return
@@ -218,6 +225,7 @@ func (w *WrapperConnection) connect() error {
 
 	// Create auth header if credentials are provided
 	header := http.Header{}
+
 	if w.Username != "" {
 		auth := base64.StdEncoding.EncodeToString([]byte(w.Username + ":" + w.Password))
 		header.Set("Authorization", "Basic "+auth)
@@ -243,14 +251,18 @@ func (w *WrapperConnection) connect() error {
 	if err != nil {
 		w.Status = StatusError
 		errMsg := err.Error()
+
 		if resp != nil {
 			if resp.StatusCode == http.StatusUnauthorized {
 				w.Error = "authentication failed"
 				return fmt.Errorf("authentication failed")
 			}
+
 			errMsg = fmt.Sprintf("%v (HTTP Status: %d)", err, resp.StatusCode)
 		}
+
 		w.Error = errMsg
+
 		return fmt.Errorf("failed to connect to wrapper: %v", errMsg)
 	}
 
@@ -284,6 +296,7 @@ func (w *WrapperConnection) readPump() {
 
 	if w.conn == nil {
 		w.Error = "connection is nil"
+
 		return
 	}
 
@@ -292,6 +305,7 @@ func (w *WrapperConnection) readPump() {
 		if w.conn != nil {
 			w.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
 		}
+
 		return nil
 	})
 
@@ -301,8 +315,10 @@ func (w *WrapperConnection) readPump() {
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				fmt.Printf("Wrapper connection error: %v\n", err)
 			}
+
 			w.Status = StatusError
 			w.Error = fmt.Sprintf("read error: %v", err)
+
 			return
 		}
 
@@ -314,6 +330,7 @@ func (w *WrapperConnection) readPump() {
 
 		// Broadcast message to all connected clients
 		w.clientsMu.RLock()
+
 		for client := range w.clients {
 			if err := client.WriteMessage(websocket.TextMessage, message); err != nil {
 				fmt.Printf("Error writing to client: %v\n", err)
@@ -321,6 +338,7 @@ func (w *WrapperConnection) readPump() {
 				w.RemoveClient(client)
 			}
 		}
+
 		w.clientsMu.RUnlock()
 	}
 }
@@ -328,12 +346,15 @@ func (w *WrapperConnection) readPump() {
 // writePump pumps messages from the clients to the wrapper connection
 func (w *WrapperConnection) writePump() {
 	ticker := time.NewTicker(54 * time.Second)
+
 	defer func() {
 		ticker.Stop()
+
 		if w.conn != nil {
 			w.conn.WriteMessage(websocket.CloseMessage, []byte{})
 			w.conn.Close()
 		}
+
 		w.Status = StatusDisconnected
 		// Signal reconnection needed
 		select {
@@ -352,6 +373,7 @@ func (w *WrapperConnection) writePump() {
 
 			if w.conn == nil {
 				fmt.Printf("Connection lost while trying to write message\n")
+
 				return
 			}
 
@@ -359,6 +381,7 @@ func (w *WrapperConnection) writePump() {
 			if err := w.conn.WriteMessage(websocket.TextMessage, message); err != nil {
 				fmt.Printf("Error writing to wrapper: %v\n", err)
 				w.Error = fmt.Sprintf("write error: %v", err)
+
 				return
 			}
 
@@ -431,6 +454,7 @@ func (w *WrapperConnection) GetServerStatus() (map[string]interface{}, error) {
 	if idx := strings.LastIndex(addr, ":"); idx != -1 {
 		host = addr[:idx]
 	}
+
 	if host == "localhost" {
 		host = "127.0.0.1"
 	}
@@ -463,10 +487,12 @@ func (w *WrapperConnection) GetServerStatus() (map[string]interface{}, error) {
 func (m *ConnectionManager) DisconnectAll() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
 	for id, wConn := range m.connections {
 		if wConn.conn != nil {
 			wConn.conn.Close()
 		}
+
 		close(wConn.done)
 		delete(m.connections, id)
 		fmt.Printf("Disconnected from wrapper %s (%s)\n", wConn.Name, wConn.ID)

@@ -15,6 +15,7 @@ func UpdateServerProperties(appDir string) error {
 
 	// Get all relevant environment variables first
 	envVars := make(map[string]string)
+
 	for _, env := range os.Environ() {
 		if !strings.HasPrefix(env, "CFG_") {
 			continue
@@ -64,6 +65,7 @@ func UpdateServerProperties(appDir string) error {
 			if currentValue != newValue {
 				newLines[i] = fmt.Sprintf("%s=%s", key, newValue)
 				updated = true
+
 				fmt.Printf("Updating %s from %s to %s\n", key, currentValue, newValue)
 			}
 		}
@@ -87,6 +89,7 @@ func readPropertiesFile(filePath string) ([]string, error) {
 	defer file.Close()
 
 	var lines []string
+
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())

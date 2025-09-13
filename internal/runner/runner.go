@@ -62,6 +62,7 @@ func (r *Runner) Start() error {
 	// Start goroutine to scan stdout
 	go func() {
 		defer scanners.Done()
+
 		for outScanner.Scan() {
 			select {
 			case r.outputChan <- outScanner.Text():
@@ -74,6 +75,7 @@ func (r *Runner) Start() error {
 	// Start goroutine to scan stderr
 	go func() {
 		defer scanners.Done()
+
 		for errScanner.Scan() {
 			select {
 			case r.outputChan <- "[ERR] " + errScanner.Text():
@@ -92,8 +94,10 @@ func (r *Runner) Start() error {
 	// Start goroutine to forward input to the process
 	go func() {
 		defer stdin.Close() // Ensure stdin is closed when done
+
 		for input := range r.stdin {
 			input = input + "\n"
+
 			_, err := stdin.Write([]byte(input))
 			if err != nil {
 				fmt.Fprintf(os.Stderr, "Error writing to stdin: %v\n", err)

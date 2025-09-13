@@ -84,6 +84,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// Send initial buffer
 	s.connLock.RLock()
+
 	for _, line := range s.outputBuffer {
 		err := conn.WriteMessage(websocket.TextMessage, []byte(line))
 		if err != nil {
@@ -91,6 +92,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
 	s.connLock.RUnlock()
 
 	// Handle incoming messages (stdin)
@@ -118,10 +120,12 @@ func (s *Server) handleRunnerOutput() {
 		if len(s.outputBuffer) > 1000 {
 			s.outputBuffer = s.outputBuffer[len(s.outputBuffer)-1000:]
 		}
+
 		s.connLock.Unlock()
 
 		// Broadcast to all connections
 		s.connLock.RLock()
+
 		for conn := range s.connections {
 			err := conn.WriteMessage(websocket.TextMessage, []byte(line))
 			if err != nil {
@@ -129,6 +133,7 @@ func (s *Server) handleRunnerOutput() {
 				delete(s.connections, conn)
 			}
 		}
+
 		s.connLock.RUnlock()
 	}
 }

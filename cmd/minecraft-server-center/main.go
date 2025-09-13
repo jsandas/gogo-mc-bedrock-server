@@ -54,9 +54,11 @@ func init() {
 	if envListenAddress := os.Getenv("LISTEN_ADDRESS"); envListenAddress != "" {
 		flag.Set("listen", envListenAddress)
 	}
+
 	if envConfigFile := os.Getenv("CONFIG_FILE"); envConfigFile != "" {
 		flag.Set("config", envConfigFile)
 	}
+
 	if envAuthKey := os.Getenv("AUTH_KEY"); envAuthKey != "" {
 		flag.Set("auth-key", envAuthKey)
 	}
@@ -84,6 +86,7 @@ func main() {
 	var wg sync.WaitGroup
 	for _, wrapper := range config.Wrappers {
 		wg.Add(1)
+
 		go func(w WrapperConfig) {
 			defer wg.Done()
 			// Ensure wrapper has a shared key configured
@@ -121,6 +124,7 @@ func main() {
 		AuthKey: finalAuthKey,
 	})
 	serverError := make(chan error, 1)
+
 	go func() {
 		if err := srv.Start(config.ListenAddress); err != nil {
 			serverError <- err

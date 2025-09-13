@@ -173,12 +173,14 @@ func (s *CentralServer) handleWebSocket(w http.ResponseWriter, r *http.Request) 
 			if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 				fmt.Printf("Web client disconnected: %v\n", err)
 			}
+
 			return
 		}
 
 		// Check if wrapper is still connected before forwarding
 		if wConn.Status != StatusConnected {
 			ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error: Wrapper is %s - %s", wConn.Status, wConn.Error)))
+
 			continue
 		}
 
@@ -186,6 +188,7 @@ func (s *CentralServer) handleWebSocket(w http.ResponseWriter, r *http.Request) 
 		if err := wConn.SendMessage(message); err != nil {
 			fmt.Printf("Error forwarding message to wrapper: %v\n", err)
 			ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error sending command: %v", err)))
+
 			continue
 		}
 	}
