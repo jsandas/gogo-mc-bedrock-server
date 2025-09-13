@@ -107,7 +107,14 @@ func extractFile(file *zip.File, destDir string) error {
 	defer dest.Close()
 
 	// Copy the contents
-	_, err = io.Copy(dest, src)
-
-	return err
+	for {
+		_, err = io.CopyN(dest, src, 1024)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+			return err
+		}
+	}
+	return nil
 }
