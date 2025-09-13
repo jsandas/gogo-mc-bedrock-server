@@ -76,7 +76,12 @@ func (s *CentralServer) handleWrappers(w http.ResponseWriter, r *http.Request) {
 	}
 
 	wrappers := s.manager.ListConnections()
-	json.NewEncoder(w).Encode(wrappers)
+
+	err := json.NewEncoder(w).Encode(wrappers)
+	if err != nil {
+		fmt.Printf("Error sending JSON response: %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // handleServerStatus handles requests for Minecraft server status.
@@ -104,7 +109,11 @@ func (s *CentralServer) handleServerStatus(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	json.NewEncoder(w).Encode(status)
+	err = json.NewEncoder(w).Encode(status)
+	if err != nil {
+		fmt.Printf("Error sending JSON response: %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 // handleRetry handles retry requests for wrapper connections.
@@ -182,7 +191,10 @@ func (s *CentralServer) handleWebSocket(w http.ResponseWriter, r *http.Request) 
 
 		// Check if wrapper is still connected before forwarding
 		if wConn.Status != StatusConnected {
-			ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error: Wrapper is %s - %s", wConn.Status, wConn.Error)))
+			err := ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error: Wrapper is %s - %s", wConn.Status, wConn.Error)))
+			if err != nil {
+				fmt.Printf("Error sending WebSocket message: %v\n", err)
+			}
 
 			continue
 		}
@@ -191,7 +203,11 @@ func (s *CentralServer) handleWebSocket(w http.ResponseWriter, r *http.Request) 
 		err = wConn.SendMessage(message)
 		if err != nil {
 			fmt.Printf("Error forwarding message to wrapper: %v\n", err)
-			ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error sending command: %v", err)))
+
+			err := ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error sending command: %v", err)))
+			if err != nil {
+				fmt.Printf("Error sending WebSocket message: %v\n", err)
+			}
 
 			continue
 		}

@@ -97,7 +97,7 @@ func (r *Runner) Start() error {
 		defer stdin.Close() // Ensure stdin is closed when done
 
 		for input := range r.stdin {
-			input = input + "\n"
+			input += "\n"
 
 			_, err := stdin.Write([]byte(input))
 			if err != nil {

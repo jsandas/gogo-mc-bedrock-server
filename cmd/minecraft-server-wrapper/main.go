@@ -22,19 +22,31 @@ var (
 func init() {
 	// Set defaults from environment variables if present
 	if envListenAddress := os.Getenv("LISTEN_ADDRESS"); envListenAddress != "" {
-		flag.Set("listen", envListenAddress)
+		err := flag.Set("listen", envListenAddress)
+		if err != nil {
+			fmt.Printf("Error setting listen flag: %v\n", err)
+		}
 	}
 
 	if envAppDir := os.Getenv("APP_DIR"); envAppDir != "" {
-		flag.Set("app-dir", envAppDir)
+		err := flag.Set("app-dir", envAppDir)
+		if err != nil {
+			fmt.Printf("Error setting app-dir flag: %v\n", err)
+		}
 	}
 
 	if envMcVer := os.Getenv("MINECRAFT_VER"); envMcVer != "" {
-		flag.Set("mc-version", envMcVer)
+		err := flag.Set("mc-version", envMcVer)
+		if err != nil {
+			fmt.Printf("Error setting mc-version flag: %v\n", err)
+		}
 	}
 
 	if envAuthKey := os.Getenv("AUTH_KEY"); envAuthKey != "" {
-		flag.Set("auth-key", envAuthKey)
+		err := flag.Set("auth-key", envAuthKey)
+		if err != nil {
+			fmt.Printf("Error setting auth-key flag: %v\n", err)
+		}
 	}
 
 	flag.Parse()

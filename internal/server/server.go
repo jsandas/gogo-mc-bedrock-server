@@ -147,7 +147,12 @@ func (s *Server) handleRunnerOutput() {
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.New("index").Parse(htmlTemplate))
-	tmpl.Execute(w, nil)
+
+	err := tmpl.Execute(w, nil)
+	if err != nil {
+		fmt.Printf("Error rendering template: %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 const htmlTemplate = `

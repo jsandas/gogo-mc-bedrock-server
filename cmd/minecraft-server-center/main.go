@@ -54,15 +54,24 @@ func loadConfig(path string) (*Config, error) {
 func init() {
 	// Set defaults from environment variables if present
 	if envListenAddress := os.Getenv("LISTEN_ADDRESS"); envListenAddress != "" {
-		flag.Set("listen", envListenAddress)
+		err := flag.Set("listen", envListenAddress)
+		if err != nil {
+			fmt.Printf("Error setting listen flag: %v\n", err)
+		}
 	}
 
 	if envConfigFile := os.Getenv("CONFIG_FILE"); envConfigFile != "" {
-		flag.Set("config", envConfigFile)
+		err := flag.Set("config", envConfigFile)
+		if err != nil {
+			fmt.Printf("Error setting config flag: %v\n", err)
+		}
 	}
 
 	if envAuthKey := os.Getenv("AUTH_KEY"); envAuthKey != "" {
-		flag.Set("auth-key", envAuthKey)
+		err := flag.Set("auth-key", envAuthKey)
+		if err != nil {
+			fmt.Printf("Error setting auth-key flag: %v\n", err)
+		}
 	}
 
 	flag.Parse()

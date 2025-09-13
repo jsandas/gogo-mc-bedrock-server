@@ -302,10 +302,19 @@ func (w *WrapperConnection) readPump() {
 		return
 	}
 
-	w.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	err := w.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+	if err != nil {
+		fmt.Printf("Error setting read deadline: %v\n", err)
+		return
+	}
+
 	w.conn.SetPongHandler(func(string) error {
 		if w.conn != nil {
-			w.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+			err := w.conn.SetReadDeadline(time.Now().Add(60 * time.Second))
+			if err != nil {
+				fmt.Printf("Error setting read deadline: %v\n", err)
+				return err
+			}
 		}
 
 		return nil
@@ -354,7 +363,12 @@ func (w *WrapperConnection) writePump() {
 		ticker.Stop()
 
 		if w.conn != nil {
-			w.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			err := w.conn.WriteMessage(websocket.CloseMessage, []byte{})
+			if err != nil {
+				fmt.Printf("Error sending close message: %v\n", err)
+				return
+			}
+
 			w.conn.Close()
 		}
 
@@ -380,9 +394,13 @@ func (w *WrapperConnection) writePump() {
 				return
 			}
 
-			w.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			err := w.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err != nil {
+				fmt.Printf("Error setting write deadline: %v\n", err)
+				return
+			}
 
-			err := w.conn.WriteMessage(websocket.TextMessage, message)
+			err = w.conn.WriteMessage(websocket.TextMessage, message)
 			if err != nil {
 				fmt.Printf("Error writing to wrapper: %v\n", err)
 				w.Error = fmt.Sprintf("write error: %v", err)
@@ -401,9 +419,13 @@ func (w *WrapperConnection) writePump() {
 				return
 			}
 
-			w.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			err := w.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			if err != nil {
+				fmt.Printf("Error setting write deadline: %v\n", err)
+				return
+			}
 
-			err := w.conn.WriteMessage(websocket.PingMessage, nil)
+			err = w.conn.WriteMessage(websocket.PingMessage, nil)
 			if err != nil {
 				fmt.Printf("Ping failed: %v\n", err)
 				return
