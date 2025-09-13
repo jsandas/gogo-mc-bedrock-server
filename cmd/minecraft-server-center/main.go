@@ -42,7 +42,9 @@ func loadConfig(path string) (*Config, error) {
 	}
 
 	var config Config
-	if err := json.Unmarshal(data, &config); err != nil {
+
+	err = json.Unmarshal(data, &config)
+	if err != nil {
 		return nil, fmt.Errorf("error parsing config file: %v", err)
 	}
 
@@ -96,7 +98,8 @@ func main() {
 			}
 
 			// Attempt to connect but don't fail if connection fails
-			if err := manager.Connect(w.ID, w.Name, w.Address, w.Username, w.Password, w.SharedKey); err != nil {
+			err := manager.Connect(w.ID, w.Name, w.Address, w.Username, w.Password, w.SharedKey)
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "Initial connection to wrapper %s (%s) failed: %v\n", w.Name, w.ID, err)
 				fmt.Fprintf(os.Stderr, "Will attempt to reconnect automatically...\n")
 			}
@@ -126,7 +129,8 @@ func main() {
 	serverError := make(chan error, 1)
 
 	go func() {
-		if err := srv.Start(config.ListenAddress); err != nil {
+		err := srv.Start(config.ListenAddress)
+		if err != nil {
 			serverError <- err
 		}
 	}()
