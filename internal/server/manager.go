@@ -153,6 +153,98 @@ func (w *WrapperConnection) Retry() error {
 	}
 }
 
+// AddClient adds a web client connection to this wrapper.
+func (w *WrapperConnection) AddClient(client *websocket.Conn) {
+	w.clientsMu.Lock()
+	w.clients[client] = true
+	w.clientsMu.Unlock()
+}
+
+// RemoveClient removes a web client connection.
+func (w *WrapperConnection) RemoveClient(client *websocket.Conn) {
+	w.clientsMu.Lock()
+	delete(w.clients, client)
+	w.clientsMu.Unlock()
+}
+
+// SendMessage sends a message to the wrapper.
+func (w *WrapperConnection) SendMessage(message []byte) error {
+	if w.Status != StatusConnected {
+		return fmt.Errorf("wrapper is not connected (status: %s)", w.Status)
+	}
+
+	select {
+	case w.sendChan <- message:
+		return nil
+	case <-w.done:
+		return fmt.Errorf("connection is closed")
+	default:
+		return fmt.Errorf("message buffer full")
+	}
+}
+
+// GetServerStatus gets the current Minecraft server status using GetPong.
+func (w *WrapperConnection) GetServerStatus() (map[string]interface{}, error) {
+	// Extract host from the address
+	addr := w.Address
+	if addr == "" {
+		return nil, fmt.Errorf("wrapper address is empty")
+	}
+
+	// Convert from ws:// to regular address and extract host
+	addr = strings.TrimPrefix(addr, "ws://")
+	addr = strings.TrimSuffix(addr, "/ws")
+
+	// Split host and port
+	host := addr
+	if idx := strings.LastIndex(addr, ":"); idx != -1 {
+		host = addr[:idx]
+	}
+
+	if host == "localhost" {
+		host = "127.0.0.1"
+	}
+
+	// Check if we have a custom port from environment
+	serverPort := "19132" // Default Minecraft Bedrock port
+	if port := os.Getenv("CFG_SERVER_PORT"); port != "" {
+		serverPort = port
+	}
+
+	// Combine host and Minecraft server port
+	mcAddr := fmt.Sprintf("%s:%s", host, serverPort)
+
+	pong, err := raknet.GetPong(mcAddr)
+	if err != nil {
+		return nil, fmt.Errorf("error getting server status from %s: %v", mcAddr, err)
+	}
+
+	return map[string]interface{}{
+		"serverName":     pong.ServerName,
+		"versionName":    pong.VersionName,
+		"levelName":      pong.LevelName,
+		"gameMode":       pong.GameMode,
+		"playerCount":    pong.PlayerCount,
+		"maxPlayerCount": pong.MaxPlayerCount,
+	}, nil
+}
+
+// DisconnectAll closes all wrapper connections.
+func (m *ConnectionManager) DisconnectAll() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	for id, wConn := range m.connections {
+		if wConn.conn != nil {
+			wConn.conn.Close()
+		}
+
+		close(wConn.done)
+		delete(m.connections, id)
+		fmt.Printf("Disconnected from wrapper %s (%s)\n", wConn.Name, wConn.ID)
+	}
+}
+
 // manage handles the connection lifecycle including automatic reconnection.
 func (w *WrapperConnection) manage() {
 	var reconnectAttempts int
@@ -434,97 +526,5 @@ func (w *WrapperConnection) writePump() {
 		case <-w.done:
 			return
 		}
-	}
-}
-
-// AddClient adds a web client connection to this wrapper.
-func (w *WrapperConnection) AddClient(client *websocket.Conn) {
-	w.clientsMu.Lock()
-	w.clients[client] = true
-	w.clientsMu.Unlock()
-}
-
-// RemoveClient removes a web client connection.
-func (w *WrapperConnection) RemoveClient(client *websocket.Conn) {
-	w.clientsMu.Lock()
-	delete(w.clients, client)
-	w.clientsMu.Unlock()
-}
-
-// SendMessage sends a message to the wrapper.
-func (w *WrapperConnection) SendMessage(message []byte) error {
-	if w.Status != StatusConnected {
-		return fmt.Errorf("wrapper is not connected (status: %s)", w.Status)
-	}
-
-	select {
-	case w.sendChan <- message:
-		return nil
-	case <-w.done:
-		return fmt.Errorf("connection is closed")
-	default:
-		return fmt.Errorf("message buffer full")
-	}
-}
-
-// GetServerStatus gets the current Minecraft server status using GetPong.
-func (w *WrapperConnection) GetServerStatus() (map[string]interface{}, error) {
-	// Extract host from the address
-	addr := w.Address
-	if addr == "" {
-		return nil, fmt.Errorf("wrapper address is empty")
-	}
-
-	// Convert from ws:// to regular address and extract host
-	addr = strings.TrimPrefix(addr, "ws://")
-	addr = strings.TrimSuffix(addr, "/ws")
-
-	// Split host and port
-	host := addr
-	if idx := strings.LastIndex(addr, ":"); idx != -1 {
-		host = addr[:idx]
-	}
-
-	if host == "localhost" {
-		host = "127.0.0.1"
-	}
-
-	// Check if we have a custom port from environment
-	serverPort := "19132" // Default Minecraft Bedrock port
-	if port := os.Getenv("CFG_SERVER_PORT"); port != "" {
-		serverPort = port
-	}
-
-	// Combine host and Minecraft server port
-	mcAddr := fmt.Sprintf("%s:%s", host, serverPort)
-
-	pong, err := raknet.GetPong(mcAddr)
-	if err != nil {
-		return nil, fmt.Errorf("error getting server status from %s: %v", mcAddr, err)
-	}
-
-	return map[string]interface{}{
-		"serverName":     pong.ServerName,
-		"versionName":    pong.VersionName,
-		"levelName":      pong.LevelName,
-		"gameMode":       pong.GameMode,
-		"playerCount":    pong.PlayerCount,
-		"maxPlayerCount": pong.MaxPlayerCount,
-	}, nil
-}
-
-// DisconnectAll closes all wrapper connections.
-func (m *ConnectionManager) DisconnectAll() {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	for id, wConn := range m.connections {
-		if wConn.conn != nil {
-			wConn.conn.Close()
-		}
-
-		close(wConn.done)
-		delete(m.connections, id)
-		fmt.Printf("Disconnected from wrapper %s (%s)\n", wConn.Name, wConn.ID)
 	}
 }
