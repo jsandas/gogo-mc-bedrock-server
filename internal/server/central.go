@@ -191,7 +191,8 @@ func (s *CentralServer) handleWebSocket(w http.ResponseWriter, r *http.Request) 
 
 		// Check if wrapper is still connected before forwarding
 		if wConn.Status != StatusConnected {
-			err := ws.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("Error: Wrapper is %s - %s", wConn.Status, wConn.Error)))
+			err := ws.WriteMessage(websocket.TextMessage,
+				[]byte(fmt.Sprintf("Error: Wrapper is %s - %s", wConn.Status, wConn.Error)))
 			if err != nil {
 				fmt.Printf("Error sending WebSocket message: %v\n", err)
 			}

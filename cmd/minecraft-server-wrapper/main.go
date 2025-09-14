@@ -16,7 +16,7 @@ var (
 	listenAddress = flag.String("listen", ":8080", "address for the web server")
 	appDir        = flag.String("app-dir", "", "directory containing the minecraft server (defaults to current directory)")
 	mcVersion     = flag.String("mc-version", "", "Minecraft version to download (if not already present)")
-	authKey       = flag.String("auth-key", "", "pre-shared key for authentication (recommended to use AUTH_KEY env var instead)")
+	authKey       = flag.String("auth-key", "", "pre-shared key for authentication (use AUTH_KEY env var instead)")
 )
 
 func init() {
@@ -53,7 +53,8 @@ func init() {
 
 	// Ensure we have an auth key
 	if *authKey == "" {
-		fmt.Fprintf(os.Stderr, "Error: Authentication key is required. Set it using the AUTH_KEY environment variable or --auth-key flag\n")
+		fmt.Fprintf(os.Stderr, "Error: Authentication key is required.\n")
+		fmt.Fprintf(os.Stderr, "       Set it using the AUTH_KEY environment variable or --auth-key flag\n")
 		os.Exit(1)
 	}
 }
@@ -70,7 +71,8 @@ func main() {
 	}
 
 	if *mcVersion == "" {
-		fmt.Fprintf(os.Stderr, "Error: Minecraft version is required. Set it using the MINECRAFT_VER environment variable or --mc-version flag\n")
+		fmt.Fprintf(os.Stderr, "Error: Minecraft version is required.\n")
+		fmt.Fprintf(os.Stderr, "       Set it using the MINECRAFT_VER environment variable or --mc-version flag\n")
 		os.Exit(1)
 	}
 

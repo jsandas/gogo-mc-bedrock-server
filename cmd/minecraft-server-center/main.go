@@ -32,7 +32,7 @@ type Config struct {
 var (
 	configFile    = flag.String("config", "config.json", "path to configuration file")
 	listenAddress = flag.String("listen", ":8081", "address for the web server (overrides config file)")
-	authKey       = flag.String("auth-key", "", "pre-shared key for authentication (overrides config file, recommended to use AUTH_KEY env var instead)")
+	authKey       = flag.String("auth-key", "", "pre-shared key for authentication (overrides config file)")
 )
 
 func loadConfig(path string) (*Config, error) {

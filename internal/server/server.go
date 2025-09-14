@@ -255,13 +255,15 @@ const htmlTemplate = `
                 if (event.code === 1008) {
                     localStorage.removeItem('authKey'); // Clear invalid key
                     const output = document.getElementById('output');
-                    output.innerHTML += '<div class="disconnected">Authentication failed. Please refresh the page to try again.</div>';
+                    output.innerHTML += '<div class="disconnected">Authentication failed. 
+                        Please refresh the page to try again.</div>';
                 } else if (reconnectAttempts < maxReconnectAttempts) {
                     reconnectAttempts++;
                     setTimeout(connect, 1000 * reconnectAttempts);
                 } else {
                     const output = document.getElementById('output');
-                    output.innerHTML += '<div class="disconnected">Connection lost. Please refresh the page to reconnect.</div>';
+                    output.innerHTML += '<div class="disconnected">Connection lost. 
+                        Please refresh the page to reconnect.</div>';
                 }
             };
 
