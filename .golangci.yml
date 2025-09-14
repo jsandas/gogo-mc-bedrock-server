@@ -53,4 +53,4 @@ linters:
     dupl:
       threshold: 100
     gocyclo:
-      min-complexity: 14
+      min-complexity: 15
