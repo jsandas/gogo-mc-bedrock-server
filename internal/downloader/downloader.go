@@ -2,6 +2,7 @@ package downloader
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
@@ -28,7 +29,8 @@ func DownloadMinecraftServer(minecraftVer string, appDir string, baseURL string)
 	}
 
 	url := fmt.Sprintf("%s/bedrock-server-%s.zip", baseURL, minecraftVer)
-	req, err := http.NewRequest("GET", url, nil)
+
+	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
