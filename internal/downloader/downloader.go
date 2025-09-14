@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // DownloadMinecraftServer downloads and extracts the Minecraft Bedrock server
@@ -80,8 +81,29 @@ func DownloadMinecraftServer(minecraftVer string, appDir string, baseURL string)
 }
 
 func extractFile(file *zip.File, destDir string) error {
+	// Clean and validate the file path
+	cleanName := filepath.Clean(file.Name)
+	if strings.HasPrefix(cleanName, "../") || strings.Contains(cleanName, "/../") {
+		return fmt.Errorf("invalid file path: %s (path traversal attempt)", file.Name)
+	}
+
 	// Create the destination path
-	destPath := filepath.Join(destDir, file.Name)
+	destPath := filepath.Join(destDir, cleanName)
+
+	// Double-check that the destination path is within the target directory
+	destAbs, err := filepath.Abs(destPath)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	dirAbs, err := filepath.Abs(destDir)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	if !strings.HasPrefix(destAbs, dirAbs) {
+		return fmt.Errorf("invalid file path: %s (path traversal attempt)", file.Name)
+	}
 
 	// Handle directories
 	if file.FileInfo().IsDir() {
@@ -89,7 +111,7 @@ func extractFile(file *zip.File, destDir string) error {
 	}
 
 	// Create parent directories if they don't exist
-	err := os.MkdirAll(filepath.Dir(destPath), 0755)
+	err = os.MkdirAll(filepath.Dir(destPath), 0755)
 	if err != nil {
 		return err
 	}
