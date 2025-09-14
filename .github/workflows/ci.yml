@@ -13,9 +13,13 @@ on:
 
 jobs:
   lint:
+    permissions:
+      contents: read
     uses: jsandas/github-actions/.github/workflows/golang-lint.yml@main
 
   security:
+    permissions:
+      security-events: write
     uses: jsandas/github-actions/.github/workflows/golang-security.yml@main
 
   test:
