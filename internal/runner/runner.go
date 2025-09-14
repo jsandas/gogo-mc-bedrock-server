@@ -17,6 +17,8 @@ type Runner struct {
 }
 
 // New creates a new Runner instance.
+//
+//nolint:noctx
 func New(command string, args ...string) *Runner {
 	return &Runner{
 		cmd:        exec.Command(command, args...),
