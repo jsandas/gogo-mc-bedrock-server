@@ -58,7 +58,7 @@ func DownloadMinecraftServer(minecraftVer string, appDir string, baseURL string)
 	tmpFile.Close()
 
 	// Create the app directory if it doesn't exist
-	err = os.MkdirAll(appDir, 0755)
+	err = os.MkdirAll(appDir, 0750)
 	if err != nil {
 		return fmt.Errorf("failed to create app directory: %w", err)
 	}
@@ -111,7 +111,7 @@ func extractFile(file *zip.File, destDir string) error {
 	}
 
 	// Create parent directories if they don't exist
-	err = os.MkdirAll(filepath.Dir(destPath), 0755)
+	err = os.MkdirAll(filepath.Dir(destPath), 0750)
 	if err != nil {
 		return err
 	}
