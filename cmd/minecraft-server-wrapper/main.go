@@ -16,35 +16,51 @@ var (
 	listenAddress = flag.String("listen", ":8080", "address for the web server")
 	appDir        = flag.String("app-dir", "", "directory containing the minecraft server (defaults to current directory)")
 	mcVersion     = flag.String("mc-version", "", "Minecraft version to download (if not already present)")
-	authKey       = flag.String("auth-key", "", "pre-shared key for authentication (recommended to use AUTH_KEY env var instead)")
+	authKey       = flag.String("auth-key", "", "pre-shared key for authentication (use AUTH_KEY env var instead)")
 )
 
 func init() {
 	// Set defaults from environment variables if present
 	if envListenAddress := os.Getenv("LISTEN_ADDRESS"); envListenAddress != "" {
-		flag.Set("listen", envListenAddress)
+		err := flag.Set("listen", envListenAddress)
+		if err != nil {
+			fmt.Printf("Error setting listen flag: %v\n", err)
+		}
 	}
+
 	if envAppDir := os.Getenv("APP_DIR"); envAppDir != "" {
-		flag.Set("app-dir", envAppDir)
+		err := flag.Set("app-dir", envAppDir)
+		if err != nil {
+			fmt.Printf("Error setting app-dir flag: %v\n", err)
+		}
 	}
+
 	if envMcVer := os.Getenv("MINECRAFT_VER"); envMcVer != "" {
-		flag.Set("mc-version", envMcVer)
+		err := flag.Set("mc-version", envMcVer)
+		if err != nil {
+			fmt.Printf("Error setting mc-version flag: %v\n", err)
+		}
 	}
+
 	if envAuthKey := os.Getenv("AUTH_KEY"); envAuthKey != "" {
-		flag.Set("auth-key", envAuthKey)
+		err := flag.Set("auth-key", envAuthKey)
+		if err != nil {
+			fmt.Printf("Error setting auth-key flag: %v\n", err)
+		}
 	}
 
 	flag.Parse()
 
 	// Ensure we have an auth key
 	if *authKey == "" {
-		fmt.Fprintf(os.Stderr, "Error: Authentication key is required. Set it using the AUTH_KEY environment variable or --auth-key flag\n")
+		fmt.Fprintf(os.Stderr, "Error: Authentication key is required.\n")
+		fmt.Fprintf(os.Stderr, "       Set it using the AUTH_KEY environment variable or --auth-key flag\n")
 		os.Exit(1)
 	}
 }
 
 func main() {
-	os.Setenv("LD_LIBRARY_PATH", ".")
+	_ = os.Setenv("LD_LIBRARY_PATH", ".")
 
 	// Check if EULA_ACCEPT is set to true
 	if eula := os.Getenv("EULA_ACCEPT"); eula != "true" {
@@ -55,7 +71,8 @@ func main() {
 	}
 
 	if *mcVersion == "" {
-		fmt.Fprintf(os.Stderr, "Error: Minecraft version is required. Set it using the MINECRAFT_VER environment variable or --mc-version flag\n")
+		fmt.Fprintf(os.Stderr, "Error: Minecraft version is required.\n")
+		fmt.Fprintf(os.Stderr, "       Set it using the MINECRAFT_VER environment variable or --mc-version flag\n")
 		os.Exit(1)
 	}
 
@@ -65,6 +82,7 @@ func main() {
 		workDir = *appDir
 	} else {
 		var err error
+
 		workDir, err = os.Getwd()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error getting working directory: %v\n", err)
@@ -74,13 +92,16 @@ func main() {
 
 	// Download server
 	fmt.Printf("Downloading Minecraft server version %s...\n", *mcVersion)
-	if err := downloader.DownloadMinecraftServer(*mcVersion, workDir, ""); err != nil {
+
+	err := downloader.DownloadMinecraftServer(*mcVersion, workDir, "")
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error downloading server: %v\n", err)
 		os.Exit(1)
 	}
 
 	// Update server properties from environment variables
-	if err := config.UpdateServerProperties(workDir); err != nil {
+	err = config.UpdateServerProperties(workDir)
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error updating server properties: %v\n", err)
 		os.Exit(1)
 	}
@@ -89,7 +110,8 @@ func main() {
 	cmdRunner := runner.New(*command)
 
 	// Start the command
-	if err := cmdRunner.Start(); err != nil {
+	err = cmdRunner.Start()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error starting command: %v\n", err)
 		os.Exit(1)
 	}
@@ -99,15 +121,18 @@ func main() {
 		Runner:  cmdRunner,
 		AuthKey: *authKey,
 	})
+
 	go func() {
-		if err := srv.Start(*listenAddress); err != nil {
+		err := srv.Start(*listenAddress)
+		if err != nil {
 			fmt.Fprintf(os.Stderr, "Error starting web server: %v\n", err)
 			os.Exit(1)
 		}
 	}()
 
 	// Wait for the command to complete
-	if err := cmdRunner.Wait(); err != nil {
+	err = cmdRunner.Wait()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error running command: %v\n", err)
 		os.Exit(1)
 	}

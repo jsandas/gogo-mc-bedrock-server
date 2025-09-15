@@ -30,6 +30,7 @@ func GetPong(addr string) (Pong, error) {
 	if err != nil {
 		return msg, fmt.Errorf("error pinging %s: %w", addr, err)
 	}
+
 	arr := bytes.Split(data, []byte(";"))
 
 	msg = Pong{

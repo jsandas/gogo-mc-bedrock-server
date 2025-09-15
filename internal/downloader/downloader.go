@@ -2,17 +2,19 @@ package downloader
 
 import (
 	"archive/zip"
+	"context"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // DownloadMinecraftServer downloads and extracts the Minecraft Bedrock server
 // minecraftVer is the version of the server to download (e.g. "1.20.0.01")
 // appDir is the directory where the server should be extracted
-// baseURL is an optional URL to download from (used for testing)
+// baseURL is an optional URL to download from (used for testing).
 func DownloadMinecraftServer(minecraftVer string, appDir string, baseURL string) error {
 	// Create temporary file for the zip
 	tmpFile, err := os.CreateTemp("", "bedrock-server-*.zip")
@@ -26,11 +28,14 @@ func DownloadMinecraftServer(minecraftVer string, appDir string, baseURL string)
 	if baseURL == "" {
 		baseURL = defaultBaseURL
 	}
+
 	url := fmt.Sprintf("%s/bedrock-server-%s.zip", baseURL, minecraftVer)
-	req, err := http.NewRequest("GET", url, nil)
+
+	req, err := http.NewRequestWithContext(context.Background(), "GET", url, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
+
 	req.Header.Set("User-Agent", "Mozilla/5.0")
 
 	resp, err := http.DefaultClient.Do(req)
@@ -50,10 +55,13 @@ func DownloadMinecraftServer(minecraftVer string, appDir string, baseURL string)
 	}
 
 	// Ensure the temp file is closed before unzipping
-	tmpFile.Close()
+	err = tmpFile.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
 
 	// Create the app directory if it doesn't exist
-	err = os.MkdirAll(appDir, 0755)
+	err = os.MkdirAll(appDir, 0750)
 	if err != nil {
 		return fmt.Errorf("failed to create app directory: %w", err)
 	}
@@ -76,8 +84,29 @@ func DownloadMinecraftServer(minecraftVer string, appDir string, baseURL string)
 }
 
 func extractFile(file *zip.File, destDir string) error {
+	// Clean and validate the file path
+	cleanName := filepath.Clean(file.Name)
+	if strings.HasPrefix(cleanName, "../") || strings.Contains(cleanName, "/../") {
+		return fmt.Errorf("invalid file path: %s (path traversal attempt)", file.Name)
+	}
+
 	// Create the destination path
-	destPath := filepath.Join(destDir, file.Name)
+	destPath := filepath.Join(destDir, cleanName)
+
+	// Double-check that the destination path is within the target directory
+	destAbs, err := filepath.Abs(destPath)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	dirAbs, err := filepath.Abs(destDir)
+	if err != nil {
+		return fmt.Errorf("failed to get absolute path: %w", err)
+	}
+
+	if !strings.HasPrefix(destAbs, dirAbs) {
+		return fmt.Errorf("invalid file path: %s (path traversal attempt)", file.Name)
+	}
 
 	// Handle directories
 	if file.FileInfo().IsDir() {
@@ -85,7 +114,8 @@ func extractFile(file *zip.File, destDir string) error {
 	}
 
 	// Create parent directories if they don't exist
-	if err := os.MkdirAll(filepath.Dir(destPath), 0755); err != nil {
+	err = os.MkdirAll(filepath.Dir(destPath), 0750)
+	if err != nil {
 		return err
 	}
 
@@ -97,13 +127,23 @@ func extractFile(file *zip.File, destDir string) error {
 	defer src.Close()
 
 	// Create the destination file
-	dest, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+	dest, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode()) // #nosec G304
 	if err != nil {
 		return err
 	}
 	defer dest.Close()
 
 	// Copy the contents
-	_, err = io.Copy(dest, src)
-	return err
+	for {
+		_, err = io.CopyN(dest, src, 1024)
+		if err != nil {
+			if err == io.EOF {
+				break
+			}
+
+			return err
+		}
+	}
+
+	return nil
 }

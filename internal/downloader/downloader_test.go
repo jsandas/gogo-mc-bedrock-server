@@ -29,6 +29,7 @@ func TestDownloadMinecraftServer(t *testing.T) {
 		if r.URL.Path != expectedPath {
 			t.Errorf("Expected request to %s, got %s", expectedPath, r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
+
 			return
 		}
 
@@ -36,6 +37,7 @@ func TestDownloadMinecraftServer(t *testing.T) {
 		if r.Header.Get("User-Agent") != "Mozilla/5.0" {
 			t.Errorf("Expected User-Agent 'Mozilla/5.0', got '%s'", r.Header.Get("User-Agent"))
 			w.WriteHeader(http.StatusBadRequest)
+
 			return
 		}
 
@@ -61,11 +63,13 @@ func TestDownloadMinecraftServer(t *testing.T) {
 	// Verify all files were extracted correctly
 	for filename, expectedContent := range testFiles {
 		path := filepath.Join(tempDir, filename)
+
 		content, err := os.ReadFile(path)
 		if err != nil {
 			t.Errorf("Failed to read extracted file %s: %v", filename, err)
 			continue
 		}
+
 		if !bytes.Equal(content, expectedContent) {
 			t.Errorf("File %s content mismatch. Expected %q, got %q", filename, expectedContent, content)
 		}
@@ -73,6 +77,7 @@ func TestDownloadMinecraftServer(t *testing.T) {
 
 	// Verify server file is executable
 	serverPath := filepath.Join(tempDir, "bedrock_server")
+
 	info, err := os.Stat(serverPath)
 	if err != nil {
 		t.Errorf("Failed to stat server file: %v", err)
@@ -81,7 +86,7 @@ func TestDownloadMinecraftServer(t *testing.T) {
 	}
 }
 
-// createTestZip creates a zip file in memory with the given files
+// createTestZip creates a zip file in memory with the given files.
 func createTestZip(t *testing.T, files map[string][]byte) *bytes.Buffer {
 	buffer := new(bytes.Buffer)
 	zipWriter := zip.NewWriter(buffer)
@@ -104,12 +109,15 @@ func createTestZip(t *testing.T, files map[string][]byte) *bytes.Buffer {
 		if err != nil {
 			t.Fatalf("Failed to create file in zip: %v", err)
 		}
-		if _, err := f.Write(content); err != nil {
+
+		_, err = f.Write(content)
+		if err != nil {
 			t.Fatalf("Failed to write content to zip: %v", err)
 		}
 	}
 
-	if err := zipWriter.Close(); err != nil {
+	err := zipWriter.Close()
+	if err != nil {
 		t.Fatalf("Failed to close zip writer: %v", err)
 	}
 

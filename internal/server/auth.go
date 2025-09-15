@@ -11,7 +11,7 @@ var (
 	ErrInvalidAuthKey = errors.New("invalid authentication key")
 )
 
-// authMiddleware checks for the presence and validity of the pre-shared key
+// authMiddleware checks for the presence and validity of the pre-shared key.
 func (s *Server) authMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Skip auth check for the index page

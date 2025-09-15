@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/jsandas/gogo-mc-bedrock-server/internal/runner"
@@ -18,7 +19,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-// Server handles the HTTP endpoints and web UI
+// Server handles the HTTP endpoints and web UI.
 type Server struct {
 	runner       *runner.Runner
 	connections  map[*websocket.Conn]bool
@@ -27,13 +28,13 @@ type Server struct {
 	authKey      string // Pre-shared key for authentication
 }
 
-// ServerConfig holds configuration for the server
+// ServerConfig holds configuration for the server.
 type ServerConfig struct {
 	Runner  *runner.Runner
 	AuthKey string
 }
 
-// New creates a new Server instance
+// New creates a new Server instance.
 func New(config ServerConfig) *Server {
 	srv := &Server{
 		runner:      config.Runner,
@@ -47,7 +48,7 @@ func New(config ServerConfig) *Server {
 	return srv
 }
 
-// Start begins the HTTP server
+// Start begins the HTTP server.
 func (s *Server) Start(addr string) error {
 	// Create a new ServeMux for our routes
 	mux := http.NewServeMux()
@@ -59,7 +60,13 @@ func (s *Server) Start(addr string) error {
 	mux.HandleFunc("/ws", s.authMiddleware(s.handleWebSocket))
 
 	fmt.Printf("Web server started at http://%s\n", addr)
-	return http.ListenAndServe(addr, mux)
+
+	server := &http.Server{
+		Addr:              addr,
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+
+	return server.ListenAndServe()
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +91,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 
 	// Send initial buffer
 	s.connLock.RLock()
+
 	for _, line := range s.outputBuffer {
 		err := conn.WriteMessage(websocket.TextMessage, []byte(line))
 		if err != nil {
@@ -91,6 +99,7 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
 	s.connLock.RUnlock()
 
 	// Handle incoming messages (stdin)
@@ -118,24 +127,36 @@ func (s *Server) handleRunnerOutput() {
 		if len(s.outputBuffer) > 1000 {
 			s.outputBuffer = s.outputBuffer[len(s.outputBuffer)-1000:]
 		}
+
 		s.connLock.Unlock()
 
 		// Broadcast to all connections
 		s.connLock.RLock()
+
 		for conn := range s.connections {
 			err := conn.WriteMessage(websocket.TextMessage, []byte(line))
 			if err != nil {
-				conn.Close()
+				err := conn.Close()
+				if err != nil {
+					fmt.Printf("Error closing connection: %v\n", err)
+				}
+
 				delete(s.connections, conn)
 			}
 		}
+
 		s.connLock.RUnlock()
 	}
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	tmpl := template.Must(template.New("index").Parse(htmlTemplate))
-	tmpl.Execute(w, nil)
+
+	err := tmpl.Execute(w, nil)
+	if err != nil {
+		fmt.Printf("Error rendering template: %v\n", err)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	}
 }
 
 const htmlTemplate = `
@@ -238,13 +259,15 @@ const htmlTemplate = `
                 if (event.code === 1008) {
                     localStorage.removeItem('authKey'); // Clear invalid key
                     const output = document.getElementById('output');
-                    output.innerHTML += '<div class="disconnected">Authentication failed. Please refresh the page to try again.</div>';
+                    output.innerHTML += '<div class="disconnected">Authentication failed. 
+                        Please refresh the page to try again.</div>';
                 } else if (reconnectAttempts < maxReconnectAttempts) {
                     reconnectAttempts++;
                     setTimeout(connect, 1000 * reconnectAttempts);
                 } else {
                     const output = document.getElementById('output');
-                    output.innerHTML += '<div class="disconnected">Connection lost. Please refresh the page to reconnect.</div>';
+                    output.innerHTML += '<div class="disconnected">Connection lost. 
+                        Please refresh the page to reconnect.</div>';
                 }
             };
 

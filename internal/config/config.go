@@ -9,12 +9,13 @@ import (
 )
 
 // UpdateServerProperties reads environment variables prefixed with CFG_ and updates
-// the server.properties file accordingly
+// the server.properties file accordingly.
 func UpdateServerProperties(appDir string) error {
 	propsFile := filepath.Join(appDir, "server.properties")
 
 	// Get all relevant environment variables first
 	envVars := make(map[string]string)
+
 	for _, env := range os.Environ() {
 		if !strings.HasPrefix(env, "CFG_") {
 			continue
@@ -64,6 +65,7 @@ func UpdateServerProperties(appDir string) error {
 			if currentValue != newValue {
 				newLines[i] = fmt.Sprintf("%s=%s", key, newValue)
 				updated = true
+
 				fmt.Printf("Updating %s from %s to %s\n", key, currentValue, newValue)
 			}
 		}
@@ -71,7 +73,8 @@ func UpdateServerProperties(appDir string) error {
 
 	// Only write the file if we found actual changes
 	if updated {
-		if err := writePropertiesFile(propsFile, newLines); err != nil {
+		err := writePropertiesFile(propsFile, newLines)
+		if err != nil {
 			return fmt.Errorf("error writing properties file: %v", err)
 		}
 	}
@@ -80,19 +83,21 @@ func UpdateServerProperties(appDir string) error {
 }
 
 func readPropertiesFile(filePath string) ([]string, error) {
-	file, err := os.Open(filePath)
+	file, err := os.Open(filePath) // #nosec G304
 	if err != nil {
 		return nil, err
 	}
 	defer file.Close()
 
 	var lines []string
+
 	scanner := bufio.NewScanner(file)
 	for scanner.Scan() {
 		lines = append(lines, scanner.Text())
 	}
 
-	if err := scanner.Err(); err != nil {
+	err = scanner.Err()
+	if err != nil {
 		return nil, err
 	}
 
@@ -100,7 +105,7 @@ func readPropertiesFile(filePath string) ([]string, error) {
 }
 
 func writePropertiesFile(filePath string, lines []string) error {
-	file, err := os.Create(filePath)
+	file, err := os.Create(filePath) // #nosec G304
 	if err != nil {
 		return err
 	}
@@ -108,7 +113,8 @@ func writePropertiesFile(filePath string, lines []string) error {
 
 	writer := bufio.NewWriter(file)
 	for _, line := range lines {
-		if _, err := writer.WriteString(line + "\n"); err != nil {
+		_, err := writer.WriteString(line + "\n")
+		if err != nil {
 			return err
 		}
 	}

@@ -12,7 +12,7 @@ import (
 	"github.com/jsandas/gogo-mc-bedrock-server/internal/server"
 )
 
-// WrapperConfig represents the configuration for a single Minecraft server wrapper
+// WrapperConfig represents the configuration for a single Minecraft server wrapper.
 type WrapperConfig struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
@@ -22,7 +22,7 @@ type WrapperConfig struct {
 	SharedKey string `json:"shared_key"` // Key that must match the wrapper's AUTH_KEY
 }
 
-// Config represents the central server configuration
+// Config represents the central server configuration.
 type Config struct {
 	ListenAddress string          `json:"listen_address"`
 	AuthKey       string          `json:"auth_key,omitempty"`
@@ -32,17 +32,19 @@ type Config struct {
 var (
 	configFile    = flag.String("config", "config.json", "path to configuration file")
 	listenAddress = flag.String("listen", ":8081", "address for the web server (overrides config file)")
-	authKey       = flag.String("auth-key", "", "pre-shared key for authentication (overrides config file, recommended to use AUTH_KEY env var instead)")
+	authKey       = flag.String("auth-key", "", "pre-shared key for authentication (overrides config file)")
 )
 
 func loadConfig(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304
 	if err != nil {
 		return nil, fmt.Errorf("error reading config file: %v", err)
 	}
 
 	var config Config
-	if err := json.Unmarshal(data, &config); err != nil {
+
+	err = json.Unmarshal(data, &config)
+	if err != nil {
 		return nil, fmt.Errorf("error parsing config file: %v", err)
 	}
 
@@ -52,13 +54,24 @@ func loadConfig(path string) (*Config, error) {
 func init() {
 	// Set defaults from environment variables if present
 	if envListenAddress := os.Getenv("LISTEN_ADDRESS"); envListenAddress != "" {
-		flag.Set("listen", envListenAddress)
+		err := flag.Set("listen", envListenAddress)
+		if err != nil {
+			fmt.Printf("Error setting listen flag: %v\n", err)
+		}
 	}
+
 	if envConfigFile := os.Getenv("CONFIG_FILE"); envConfigFile != "" {
-		flag.Set("config", envConfigFile)
+		err := flag.Set("config", envConfigFile)
+		if err != nil {
+			fmt.Printf("Error setting config flag: %v\n", err)
+		}
 	}
+
 	if envAuthKey := os.Getenv("AUTH_KEY"); envAuthKey != "" {
-		flag.Set("auth-key", envAuthKey)
+		err := flag.Set("auth-key", envAuthKey)
+		if err != nil {
+			fmt.Printf("Error setting auth-key flag: %v\n", err)
+		}
 	}
 
 	flag.Parse()
@@ -84,6 +97,7 @@ func main() {
 	var wg sync.WaitGroup
 	for _, wrapper := range config.Wrappers {
 		wg.Add(1)
+
 		go func(w WrapperConfig) {
 			defer wg.Done()
 			// Ensure wrapper has a shared key configured
@@ -93,7 +107,8 @@ func main() {
 			}
 
 			// Attempt to connect but don't fail if connection fails
-			if err := manager.Connect(w.ID, w.Name, w.Address, w.Username, w.Password, w.SharedKey); err != nil {
+			err := manager.Connect(w.ID, w.Name, w.Address, w.Username, w.Password, w.SharedKey)
+			if err != nil {
 				fmt.Fprintf(os.Stderr, "Initial connection to wrapper %s (%s) failed: %v\n", w.Name, w.ID, err)
 				fmt.Fprintf(os.Stderr, "Will attempt to reconnect automatically...\n")
 			}
@@ -121,8 +136,10 @@ func main() {
 		AuthKey: finalAuthKey,
 	})
 	serverError := make(chan error, 1)
+
 	go func() {
-		if err := srv.Start(config.ListenAddress); err != nil {
+		err := srv.Start(config.ListenAddress)
+		if err != nil {
 			serverError <- err
 		}
 	}()
@@ -140,7 +157,8 @@ func main() {
 	}
 
 	// Graceful shutdown
-	if err := srv.Stop(); err != nil {
+	err = srv.Stop()
+	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error during shutdown: %v\n", err)
 	}
 

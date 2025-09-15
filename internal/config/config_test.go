@@ -21,8 +21,11 @@ max-players=10
 server-port=19132
 server-portv6=19133
 `
+
 	propsFile := filepath.Join(tempDir, "server.properties")
-	if err := os.WriteFile(propsFile, []byte(propsContent), 0644); err != nil {
+
+	err := os.WriteFile(propsFile, []byte(propsContent), 0644)
+	if err != nil {
 		t.Fatalf("Failed to create test properties file: %v", err)
 	}
 
@@ -41,7 +44,8 @@ server-portv6=19133
 	})
 
 	// Run the update
-	if err := UpdateServerProperties(tempDir); err != nil {
+	err = UpdateServerProperties(tempDir)
+	if err != nil {
 		t.Errorf("UpdateServerProperties failed: %v", err)
 	}
 
@@ -89,8 +93,11 @@ func TestUpdateServerPropertiesNoChanges(t *testing.T) {
 server-name=Dedicated Server
 gamemode=survival
 `
+
 	propsFile := filepath.Join(tempDir, "server.properties")
-	if err := os.WriteFile(propsFile, []byte(propsContent), 0644); err != nil {
+
+	err := os.WriteFile(propsFile, []byte(propsContent), 0644)
+	if err != nil {
 		t.Fatalf("Failed to create test properties file: %v", err)
 	}
 
@@ -101,7 +108,8 @@ gamemode=survival
 	}
 
 	// Run the update with no relevant environment variables
-	if err := UpdateServerProperties(tempDir); err != nil {
+	err = UpdateServerProperties(tempDir)
+	if err != nil {
 		t.Errorf("UpdateServerProperties failed: %v", err)
 	}
 
