@@ -465,80 +465,70 @@ func (w *WrapperConnection) readPump() {
 	}
 }
 
+// sendWithDeadline sends a message with a write deadline.
+func (w *WrapperConnection) sendWithDeadline(messageType int, data []byte) error {
+	if w.conn == nil {
+		return fmt.Errorf("connection is nil")
+	}
+
+	err := w.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	if err != nil {
+		return fmt.Errorf("set write deadline: %w", err)
+	}
+
+	return w.conn.WriteMessage(messageType, data)
+}
+
+// updateMessageStats updates the connection statistics after sending a message.
+func (w *WrapperConnection) updateMessageStats() {
+	w.statsMu.Lock()
+	w.Stats.MessagesSent++
+	w.Stats.LastMessageAt = time.Now()
+	w.statsMu.Unlock()
+}
+
+// cleanupConnection handles the connection cleanup and status update.
+func (w *WrapperConnection) cleanupConnection() {
+	if w.conn != nil {
+		// Try to send close message, but don't block if it fails
+		_ = w.sendWithDeadline(websocket.CloseMessage, []byte{})
+		_ = w.conn.Close()
+	}
+
+	w.Status = StatusDisconnected
+	// Signal reconnection needed
+	select {
+	case w.reconnectSignal <- struct{}{}:
+	default:
+	}
+}
+
 // writePump pumps messages from the clients to the wrapper connection.
 func (w *WrapperConnection) writePump() {
 	ticker := time.NewTicker(54 * time.Second)
 
 	defer func() {
 		ticker.Stop()
-
-		if w.conn != nil {
-			err := w.conn.WriteMessage(websocket.CloseMessage, []byte{})
-			if err != nil {
-				fmt.Printf("Error sending close message: %v\n", err)
-				return
-			}
-
-			err = w.conn.Close()
-			if err != nil {
-				fmt.Printf("Error closing connection: %v\n", err)
-			}
-		}
-
-		w.Status = StatusDisconnected
-		// Signal reconnection needed
-		select {
-		case w.reconnectSignal <- struct{}{}:
-		default:
-		}
+		w.cleanupConnection()
 	}()
 
 	for {
 		select {
 		case message, ok := <-w.sendChan:
 			if !ok {
-				// Channel closed
-				return
+				return // Channel closed
 			}
 
-			if w.conn == nil {
-				fmt.Printf("Connection lost while trying to write message\n")
-
-				return
-			}
-
-			err := w.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+			err := w.sendWithDeadline(websocket.TextMessage, message)
 			if err != nil {
-				fmt.Printf("Error setting write deadline: %v\n", err)
-				return
-			}
-
-			err = w.conn.WriteMessage(websocket.TextMessage, message)
-			if err != nil {
-				fmt.Printf("Error writing to wrapper: %v\n", err)
 				w.Error = fmt.Sprintf("write error: %v", err)
-
 				return
 			}
 
-			// Update stats
-			w.statsMu.Lock()
-			w.Stats.MessagesSent++
-			w.Stats.LastMessageAt = time.Now()
-			w.statsMu.Unlock()
+			w.updateMessageStats()
 
 		case <-ticker.C:
-			if w.conn == nil {
-				return
-			}
-
-			err := w.conn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-			if err != nil {
-				fmt.Printf("Error setting write deadline: %v\n", err)
-				return
-			}
-
-			err = w.conn.WriteMessage(websocket.PingMessage, nil)
+			err := w.sendWithDeadline(websocket.PingMessage, nil)
 			if err != nil {
 				fmt.Printf("Ping failed: %v\n", err)
 				return
