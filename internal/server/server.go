@@ -140,6 +140,7 @@ func (s *Server) handleRunnerOutput() {
 				if err != nil {
 					fmt.Printf("Error closing connection: %v\n", err)
 				}
+
 				delete(s.connections, conn)
 			}
 		}

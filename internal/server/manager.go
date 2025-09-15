@@ -347,6 +347,7 @@ func (w *WrapperConnection) connect() error {
 		if err != nil {
 			fmt.Printf("Error closing existing connection: %v\n", err)
 		}
+
 		w.conn = nil
 	}
 
@@ -450,10 +451,12 @@ func (w *WrapperConnection) readPump() {
 			err := client.WriteMessage(websocket.TextMessage, message)
 			if err != nil {
 				fmt.Printf("Error writing to client: %v\n", err)
+
 				err = client.Close()
 				if err != nil {
 					fmt.Printf("Error closing client connection: %v\n", err)
 				}
+
 				w.RemoveClient(client)
 			}
 		}
