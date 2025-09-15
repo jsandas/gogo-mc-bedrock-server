@@ -55,7 +55,10 @@ func DownloadMinecraftServer(minecraftVer string, appDir string, baseURL string)
 	}
 
 	// Ensure the temp file is closed before unzipping
-	tmpFile.Close()
+	err = tmpFile.Close()
+	if err != nil {
+		return fmt.Errorf("failed to close temp file: %w", err)
+	}
 
 	// Create the app directory if it doesn't exist
 	err = os.MkdirAll(appDir, 0750)

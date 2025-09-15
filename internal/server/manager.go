@@ -236,7 +236,10 @@ func (m *ConnectionManager) DisconnectAll() {
 
 	for id, wConn := range m.connections {
 		if wConn.conn != nil {
-			wConn.conn.Close()
+			err := wConn.conn.Close()
+			if err != nil {
+				fmt.Printf("Error closing connection: %v\n", err)
+			}
 		}
 
 		close(wConn.done)
@@ -302,7 +305,10 @@ func (w *WrapperConnection) manage() {
 		case <-w.reconnectSignal:
 			// Manual reconnect requested
 			if w.conn != nil {
-				w.conn.Close()
+				err := w.conn.Close()
+				if err != nil {
+					fmt.Printf("Error closing connection: %v\n", err)
+				}
 			}
 
 			continue
@@ -337,7 +343,10 @@ func (w *WrapperConnection) connect() error {
 
 	// Check if there's already an active connection
 	if w.conn != nil {
-		w.conn.Close()
+		err := w.conn.Close()
+		if err != nil {
+			fmt.Printf("Error closing existing connection: %v\n", err)
+		}
 		w.conn = nil
 	}
 
@@ -379,7 +388,10 @@ func (w *WrapperConnection) readPump() {
 	defer func() {
 		w.Status = StatusDisconnected
 		if w.conn != nil {
-			w.conn.Close()
+			err := w.conn.Close()
+			if err != nil {
+				fmt.Printf("Error closing connection: %v\n", err)
+			}
 		}
 		// Signal for reconnection
 		select {
@@ -438,7 +450,10 @@ func (w *WrapperConnection) readPump() {
 			err := client.WriteMessage(websocket.TextMessage, message)
 			if err != nil {
 				fmt.Printf("Error writing to client: %v\n", err)
-				client.Close()
+				err = client.Close()
+				if err != nil {
+					fmt.Printf("Error closing client connection: %v\n", err)
+				}
 				w.RemoveClient(client)
 			}
 		}
@@ -461,7 +476,10 @@ func (w *WrapperConnection) writePump() {
 				return
 			}
 
-			w.conn.Close()
+			err = w.conn.Close()
+			if err != nil {
+				fmt.Printf("Error closing connection: %v\n", err)
+			}
 		}
 
 		w.Status = StatusDisconnected

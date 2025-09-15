@@ -136,7 +136,10 @@ func (s *Server) handleRunnerOutput() {
 		for conn := range s.connections {
 			err := conn.WriteMessage(websocket.TextMessage, []byte(line))
 			if err != nil {
-				conn.Close()
+				err := conn.Close()
+				if err != nil {
+					fmt.Printf("Error closing connection: %v\n", err)
+				}
 				delete(s.connections, conn)
 			}
 		}

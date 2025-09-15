@@ -175,7 +175,10 @@ func (s *CentralServer) handleWebSocket(w http.ResponseWriter, r *http.Request) 
 		delete(s.clients, ws)
 		s.clientsMux.Unlock()
 		wConn.RemoveClient(ws)
-		ws.Close()
+		err := ws.Close()
+		if err != nil {
+			fmt.Printf("Error closing WebSocket: %v\n", err)
+		}
 	}()
 
 	// Handle incoming messages from web client

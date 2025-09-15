@@ -60,7 +60,7 @@ func init() {
 }
 
 func main() {
-	os.Setenv("LD_LIBRARY_PATH", ".")
+	_ = os.Setenv("LD_LIBRARY_PATH", ".")
 
 	// Check if EULA_ACCEPT is set to true
 	if eula := os.Getenv("EULA_ACCEPT"); eula != "true" {
