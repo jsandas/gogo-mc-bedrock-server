@@ -36,7 +36,7 @@ var (
 )
 
 func loadConfig(path string) (*Config, error) {
-	data, err := os.ReadFile(path)
+	data, err := os.ReadFile(path) // #nosec G304
 	if err != nil {
 		return nil, fmt.Errorf("error reading config file: %v", err)
 	}

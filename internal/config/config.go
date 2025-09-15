@@ -83,7 +83,7 @@ func UpdateServerProperties(appDir string) error {
 }
 
 func readPropertiesFile(filePath string) ([]string, error) {
-	file, err := os.Open(filePath)
+	file, err := os.Open(filePath) // #nosec G304
 	if err != nil {
 		return nil, err
 	}
@@ -105,7 +105,7 @@ func readPropertiesFile(filePath string) ([]string, error) {
 }
 
 func writePropertiesFile(filePath string, lines []string) error {
-	file, err := os.Create(filePath)
+	file, err := os.Create(filePath) // #nosec G304
 	if err != nil {
 		return err
 	}

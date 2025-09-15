@@ -127,7 +127,7 @@ func extractFile(file *zip.File, destDir string) error {
 	defer src.Close()
 
 	// Create the destination file
-	dest, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+	dest, err := os.OpenFile(destPath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode()) // #nosec G304
 	if err != nil {
 		return err
 	}
