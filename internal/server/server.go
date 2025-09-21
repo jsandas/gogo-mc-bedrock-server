@@ -5,6 +5,7 @@ import (
 	"html/template"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/jsandas/gogo-mc-bedrock-server/internal/runner"
@@ -59,7 +60,14 @@ func (s *Server) Start(addr string) error {
 	mux.HandleFunc("/ws", s.authMiddleware(s.handleWebSocket))
 
 	fmt.Printf("Web server started at http://%s\n", addr)
-	return http.ListenAndServe(addr, mux)
+
+	server := &http.Server{
+		Addr:              addr,
+		Handler:           mux,
+		ReadHeaderTimeout: 3 * time.Second,
+	}
+
+	return server.ListenAndServe()
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
