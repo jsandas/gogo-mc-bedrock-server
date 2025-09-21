@@ -5,7 +5,6 @@ import (
 	"html/template"
 	"net/http"
 	"sync"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/jsandas/gogo-mc-bedrock-server/internal/runner"
@@ -60,13 +59,7 @@ func (s *Server) Start(addr string) error {
 	mux.HandleFunc("/ws", s.authMiddleware(s.handleWebSocket))
 
 	fmt.Printf("Web server started at http://%s\n", addr)
-
-	server := &http.Server{
-		Addr:              addr,
-		ReadHeaderTimeout: 3 * time.Second,
-	}
-
-	return server.ListenAndServe()
+	return http.ListenAndServe(addr, mux)
 }
 
 func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
@@ -259,15 +252,13 @@ const htmlTemplate = `
                 if (event.code === 1008) {
                     localStorage.removeItem('authKey'); // Clear invalid key
                     const output = document.getElementById('output');
-                    output.innerHTML += '<div class="disconnected">Authentication failed. 
-                        Please refresh the page to try again.</div>';
+                    output.innerHTML += '<div class="disconnected">Authentication failed. Please refresh the page to try again.</div>';
                 } else if (reconnectAttempts < maxReconnectAttempts) {
                     reconnectAttempts++;
                     setTimeout(connect, 1000 * reconnectAttempts);
                 } else {
                     const output = document.getElementById('output');
-                    output.innerHTML += '<div class="disconnected">Connection lost. 
-                        Please refresh the page to reconnect.</div>';
+                    output.innerHTML += '<div class="disconnected">Connection lost. Please refresh the page to reconnect.</div>';
                 }
             };
 
