@@ -152,6 +152,7 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+//nolint:lll
 const htmlTemplate = `
 <!DOCTYPE html>
 <html>

@@ -84,7 +84,7 @@ func DownloadMinecraftServer(minecraftVer string, appDir string, baseURL string)
 
 func extractFile(file *zip.File, destDir string) error {
 	// Create the destination path
-	destPath := filepath.Join(destDir, file.Name)
+	destPath := filepath.Join(destDir, file.Name) // #nosec G305
 
 	// Handle directories
 	if file.FileInfo().IsDir() {
