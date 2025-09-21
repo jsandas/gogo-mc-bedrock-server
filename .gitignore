@@ -2,3 +2,5 @@
 config.json
 # Added by goreleaser init:
 dist/
+
+*.sarif
