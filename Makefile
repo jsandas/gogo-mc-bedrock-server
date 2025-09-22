@@ -8,7 +8,7 @@ run-center: ./cmd/minecraft-server-center/main.go
 
 run-docker:
 	docker build -t gogo-mc-bedrock-server -f build/minecraft-server-wrapper/Dockerfile .
-	docker run -it --rm -p 8080:8080 -p 19132:19132/udp -e EULA_ACCEPT=true -e AUTH_KEY=supersecret gogo-mc-bedrock-server
+	docker run --name minecraft-bedrock-server -it --rm -p 8080:8080 -p 19132:19132/udp -e EULA_ACCEPT=true -e AUTH_KEY=supersecret gogo-mc-bedrock-server
 
 # Default target
 all: build
