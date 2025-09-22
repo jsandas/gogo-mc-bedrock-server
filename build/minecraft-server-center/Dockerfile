@@ -1,13 +1,6 @@
-FROM golang:1.25 AS builder
-
-WORKDIR /app
-
-COPY . .
-
-RUN go build -o minecraft-server-center ./cmd/minecraft-server-center
-
-
 FROM debian:bookworm
+
+ARG TARGETPLATFORM
 
 ARG MC_VER=1.21.100.7
 
@@ -25,7 +18,7 @@ RUN useradd -m -d ${APP_DIR} -s /bin/bash minecraft \
 
 WORKDIR ${APP_DIR}
 
-COPY --from=builder /app/minecraft-server-center ${APP_DIR}/minecraft-server-center
+COPY $TARGETPLATFORM/minecraft-server-center ${APP_DIR}/minecraft-server-center
 
 RUN chown -R minecraft ${APP_DIR}
 

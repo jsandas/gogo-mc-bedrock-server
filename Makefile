@@ -7,15 +7,15 @@ run-center: ./cmd/minecraft-server-center/main.go
 	AUTH_KEY=supersecret go run ./cmd/minecraft-server-center
 
 run-docker:
-	docker build -t gogo-mc-bedrock-server -f build/minecraft-server-wrapper/Dockerfile .
-	docker run --name minecraft-bedrock-server -it --rm -p 8080:8080 -p 19132:19132/udp -e EULA_ACCEPT=true -e AUTH_KEY=supersecret gogo-mc-bedrock-server
+# 	docker build -t gogo-mc-bedrock-server -f build/minecraft-server-wrapper/Dockerfile .
+	docker run --name minecraft-bedrock-server -it --rm -p 8080:8080 -p 19132:19132/udp -e EULA_ACCEPT=true -e AUTH_KEY=supersecret gogo-mc-bedrock-wrapper
 
 # Default target
 all: build
 
-# Build the TLS simulator
+# Build the artifacts
 build:
-	goreleaser build --clean --snapshot
+	goreleaser release --clean --snapshot
 
 # Run all tests and quality checks
 test: quality test-integration

@@ -36,6 +36,43 @@ builds:
       - linux
     main: ./cmd/minecraft-server-center
 
+dockers_v2:
+  - id: minecraft-server-wrapper
+    images:
+      - "jsandas/minecraft-server-wrapper"
+    dockerfile: "build/minecraft-server-wrapper/Dockerfile"
+    platforms:
+      - linux/amd64
+    tags:
+      - "v{{ .Version }}"
+      - "{{ if .IsNightly }}nightly{{ end }}"
+      - "{{ if not .IsNightly }}latest{{ end }}"
+    labels:
+      "org.opencontainers.image.created": "{{.Date}}"
+      "org.opencontainers.image.description": "Minecraft server wrapper for running a Bedrock server"
+      "org.opencontainers.image.name": "minecraft-server-wrapper"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.source": "{{.GitURL}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+
+  - id: minecraft-server-center
+    images:
+      - "jsandas/minecraft-server-center"
+    dockerfile: "build/minecraft-server-center/Dockerfile"
+    platforms:
+      - linux/amd64
+    tags:
+      - "v{{ .Version }}"
+      - "{{ if .IsNightly }}nightly{{ end }}"
+      - "{{ if not .IsNightly }}latest{{ end }}"
+    labels:
+      "org.opencontainers.image.created": "{{.Date}}"
+      "org.opencontainers.image.description": "Minecraft server management for multiple servers"
+      "org.opencontainers.image.name": "minecraft-server-center"
+      "org.opencontainers.image.revision": "{{.FullCommit}}"
+      "org.opencontainers.image.source": "{{.GitURL}}"
+      "org.opencontainers.image.version": "{{.Version}}"
+
 archives:
   - formats: [tar.gz]
     # this name template makes the OS and Arch compatible with the results of `uname`.
