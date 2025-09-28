@@ -11,6 +11,7 @@ import (
 // Runner manages the execution of a command and its I/O.
 type Runner struct {
 	cmd        *exec.Cmd
+	appDir     string
 	stdin      chan string
 	outputChan chan string   // Channel for streaming output
 	done       chan struct{} // Channel to signal when the command is done
@@ -19,9 +20,10 @@ type Runner struct {
 // New creates a new Runner instance.
 //
 //nolint:noctx
-func New(command string, args ...string) *Runner {
+func New(command string, appDir string, args ...string) *Runner {
 	return &Runner{
 		cmd:        exec.Command(command, args...),
+		appDir:     appDir,
 		stdin:      make(chan string),
 		outputChan: make(chan string, 100), // Buffered channel for output
 		done:       make(chan struct{}),
@@ -49,6 +51,7 @@ func (r *Runner) Start() error {
 	}
 
 	// Start command
+	r.cmd.Dir = r.appDir
 	err = r.cmd.Start()
 	if err != nil {
 		return fmt.Errorf("error starting command: %v", err)

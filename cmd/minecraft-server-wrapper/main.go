@@ -107,7 +107,7 @@ func main() {
 	}
 
 	// Create command runner
-	cmdRunner := runner.New(*command)
+	cmdRunner := runner.New(*command, *appDir)
 
 	// Start the command
 	err = cmdRunner.Start()

@@ -44,7 +44,7 @@ func TestRunner_BasicIO(t *testing.T) {
 	scriptPath := createEchoScript(t)
 
 	// Create and start runner
-	r := New(scriptPath)
+	r := New(scriptPath, "")
 
 	err := r.Start()
 	if err != nil {
@@ -131,7 +131,7 @@ func TestRunner_LargeInput(t *testing.T) {
 	scriptPath := createEchoScript(t)
 
 	// Create and start runner
-	r := New(scriptPath)
+	r := New(scriptPath, "")
 
 	err := r.Start()
 	if err != nil {
@@ -205,7 +205,7 @@ func TestRunner_MultipleWriters(t *testing.T) {
 	scriptPath := createEchoScript(t)
 
 	// Create and start runner
-	r := New(scriptPath)
+	r := New(scriptPath, "")
 
 	err := r.Start()
 	if err != nil {
