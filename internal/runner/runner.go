@@ -52,6 +52,7 @@ func (r *Runner) Start() error {
 
 	// Start command
 	r.cmd.Dir = r.appDir
+
 	err = r.cmd.Start()
 	if err != nil {
 		return fmt.Errorf("error starting command: %v", err)
