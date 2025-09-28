@@ -1,6 +1,7 @@
 FROM debian:bookworm
 
 ARG TARGETPLATFORM
+ARG TARGETARCH
 
 ARG MC_VER=1.21.100.7
 
@@ -18,7 +19,8 @@ RUN useradd -m -d ${APP_DIR} -s /bin/bash minecraft \
 
 WORKDIR ${APP_DIR}
 
-COPY $TARGETPLATFORM/minecraft-server-center ${APP_DIR}/minecraft-server-center
+COPY dist/minecraft-server-center_linux_${TARGETARCH}_v1/minecraft-server-center ${APP_DIR}/minecraft-server-center
+# COPY $TARGETPLATFORM/minecraft-server-center ${APP_DIR}/minecraft-server-center
 
 RUN chown -R minecraft ${APP_DIR}
 
