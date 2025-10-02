@@ -10,7 +10,7 @@ updates:
       interval: "weekly"
   - package-ecosystem: "docker"
     directories: 
-      - "./build/minecraft-server-wrapper"
-      - "./build/minecraft-server-center"
+      - "build/minecraft-server-wrapper"
+      - "build/minecraft-server-center"
     schedule:
       interval: "weekly"
