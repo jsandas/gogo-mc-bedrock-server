@@ -1,0 +1,22 @@
+cat <<EOF
+minecraft-server-wrapper has been installed as a systemd service.
+
+To start/stop minecraft-server-wrapper:
+
+sudo systemctl start minecraft-server-wrapper
+sudo systemctl stop minecraft-server-wrapper
+
+To enable/disable minecraft-server-wrapper starting automatically on boot:
+
+sudo systemctl enable minecraft-server-wrapper
+sudo systemctl disable minecraft-server-wrapper
+
+To reload minecraft-server-wrapper:
+
+sudo systemctl restart minecraft-server-wrapper
+
+To view minecraft-server-wrapper logs:
+
+journalctl -f -u minecraft-server-wrapper
+
+EOF

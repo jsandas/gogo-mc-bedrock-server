@@ -1,0 +1,5 @@
+systemctl stop minecraft-server-wrapper
+systemctl disable minecraft-server-wrapper
+rm /etc/systemd/system/minecraft-server-wrapper.service
+systemctl daemon-reload
+systemctl reset-failed

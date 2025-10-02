@@ -1,0 +1,14 @@
+[Unit]
+Description=minecraft-server-wrapper
+After=network.target
+
+[Service]
+User=minecraft
+ExecStart=/usr/bin/minecraft-server-wrapper
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+EnvironmentFile=/etc/defaults/minecraft-server-wrapper
+
+[Install]
+WantedBy=multi-user.target

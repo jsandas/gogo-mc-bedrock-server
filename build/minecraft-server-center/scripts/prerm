@@ -1,0 +1,5 @@
+systemctl stop minecraft-server-center
+systemctl disable minecraft-server-center
+rm /etc/systemd/system/minecraft-server-center.service
+systemctl daemon-reload
+systemctl reset-failed

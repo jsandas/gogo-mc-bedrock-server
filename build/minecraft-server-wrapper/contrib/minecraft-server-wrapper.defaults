@@ -1,0 +1,4 @@
+# this is minecraft-server-wrapper configuration
+MINECRAFT_VER=1.21.100.7
+AUTH_KEY=supersecret
+EULA_ACCEPT=false

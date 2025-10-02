@@ -1,0 +1,22 @@
+cat <<EOF
+minecraft-server-center has been installed as a systemd service.
+
+To start/stop minecraft-server-center:
+
+sudo systemctl start minecraft-server-center
+sudo systemctl stop minecraft-server-center
+
+To enable/disable minecraft-server-center starting automatically on boot:
+
+sudo systemctl enable minecraft-server-center
+sudo systemctl disable minecraft-server-center
+
+To reload minecraft-server-center:
+
+sudo systemctl restart minecraft-server-center
+
+To view minecraft-server-center logs:
+
+journalctl -f -u minecraft-server-center
+
+EOF

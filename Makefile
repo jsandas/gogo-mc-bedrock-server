@@ -7,10 +7,9 @@ run-center: ./cmd/minecraft-server-center/main.go
 	AUTH_KEY=supersecret go run ./cmd/minecraft-server-center
 
 run-docker:
-	@docker build --platform linux/amd64 -t gogo-mc-bedrock-wrapper -f build/minecraft-server-wrapper/Dockerfile .
 	@docker run --name minecraft-server-wrapper -it --rm -p 8080:8080 -p 19132:19132/udp \
 		-e EULA_ACCEPT=true -e AUTH_KEY=supersecret \
-		jsandas/minecraft-server-wrapper:latest-amd64
+		minecraft-server-wrapper
 
 # Default target
 all: build
@@ -18,6 +17,8 @@ all: build
 # Build the artifacts
 build:
 	goreleaser release --clean --snapshot
+	@docker build --platform linux/amd64 -t minecraft-server-wrapper -f build/minecraft-server-wrapper/Dockerfile .
+	@docker build --platform linux/amd64 -t minecraft-server-center -f build/minecraft-server-center/Dockerfile .
 
 # Run all tests and quality checks
 test: quality test-integration

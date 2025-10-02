@@ -19,7 +19,7 @@ RUN useradd -m -d ${APP_DIR} -s /bin/bash minecraft \
 
 WORKDIR ${APP_DIR}
 
-COPY dist/minecraft-server-wrapper_linux_${TARGETARCH}_v1/minecraft-server-wrapper ${APP_DIR}/minecraft-server-wrapper
+COPY dist/minecraft-server-wrapper_linux_${TARGETARCH} ${APP_DIR}/minecraft-server-wrapper
 # COPY $TARGETPLATFORM/minecraft-server-wrapper ${APP_DIR}/minecraft-server-wrapper
 
 RUN chown -R minecraft ${APP_DIR}

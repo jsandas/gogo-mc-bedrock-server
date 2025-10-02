@@ -1,0 +1,14 @@
+[Unit]
+Description=minecraft-server-center
+After=network.target
+
+[Service]
+User=minecraft
+ExecStart=/usr/bin/minecraft-server-center
+StandardOutput=inherit
+StandardError=inherit
+Restart=always
+EnvironmentFile=/etc/defaults/minecraft-server-center
+
+[Install]
+WantedBy=multi-user.target

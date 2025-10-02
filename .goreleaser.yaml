@@ -17,7 +17,7 @@ before:
 
 builds:
   - id: minecraft-server-wrapper
-    binary: minecraft-server-wrapper
+    binary: minecraft-server-wrapper_{{ .Os }}_{{ .Arch}}
     env:
       - CGO_ENABLED=0
     goarch:
@@ -25,9 +25,10 @@ builds:
     goos:
       - linux
     main: ./cmd/minecraft-server-wrapper
+    no_unique_dist_dir: true
 
   - id: minecraft-server-center
-    binary: minecraft-server-center
+    binary: minecraft-server-center_{{ .Os }}_{{ .Arch}}
     env:
       - CGO_ENABLED=0
     goarch:
@@ -35,6 +36,7 @@ builds:
     goos:
       - linux
     main: ./cmd/minecraft-server-center
+    no_unique_dist_dir: true
 
 # dockers_v2:
 #   - id: minecraft-server-wrapper
@@ -73,20 +75,88 @@ builds:
 #       "org.opencontainers.image.source": "{{.GitURL}}"
 #       "org.opencontainers.image.version": "{{.Version}}"
 
-archives:
-  - formats: [tar.gz]
-    # this name template makes the OS and Arch compatible with the results of `uname`.
-    name_template: >-
-      {{ .ProjectName }}_
-      {{- title .Os }}_
-      {{- if eq .Arch "amd64" }}x86_64
-      {{- else if eq .Arch "386" }}i386
-      {{- else }}{{ .Arch }}{{ end }}
-      {{- if .Arm }}v{{ .Arm }}{{ end }}
-    # use zip for windows archives
-    format_overrides:
-      - goos: windows
-        formats: [zip]
+# archives:
+#   - formats: [tar.gz]
+#     # this name template makes the OS and Arch compatible with the results of `uname`.
+#     name_template: >-
+#       {{ .ProjectName }}_
+#       {{- title .Os }}_
+#       {{- if eq .Arch "amd64" }}x86_64
+#       {{- else if eq .Arch "386" }}i386
+#       {{- else }}{{ .Arch }}{{ end }}
+#       {{- if .Arm }}v{{ .Arm }}{{ end }}
+#     files:
+#       - README.md
+#       - build/minecraft-server-wrapper/debian/contrib/*
+#     # use zip for windows archives
+#     format_overrides:
+#       - goos: windows
+#         formats: [zip]
+
+nfpms:
+  - id: minecraft-server-wrapper
+    maintainer: Jsandas
+    license: "MIT"
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    dependencies:
+      - systemd
+      - adduser
+    package_name: minecraft-server-wrapper
+    meta: true
+    contents:
+      - src: './dist/minecraft-server-wrapper_{{ .Os }}_{{ .Arch }}'
+        dst: /usr/bin/minecraft-server-wrapper
+        file_info:
+          mode: 0755
+      - src: build/minecraft-server-wrapper/contrib/minecraft-server-wrapper.service
+        dst: /etc/systemd/system/minecraft-server-wrapper.service
+        type: "config"
+      - src: build/minecraft-server-wrapper/contrib/minecraft-server-wrapper.defaults
+        dst: /etc/defaults/minecraft-server-wrapper
+        type: "config"
+        file_info:
+          mode: 0640
+          owner: minecraft
+          group: minecraft
+    scripts:
+      preinstall: build/minecraft-server-wrapper/scripts/preinst
+      postinstall: build/minecraft-server-wrapper/scripts/postinst
+      preremove: build/minecraft-server-wrapper/scripts/prerm
+
+  - id: minecraft-server-center
+    maintainer: Jsandas
+    license: "MIT"
+    formats:
+      - deb
+      - rpm
+    bindir: /usr/bin
+    dependencies:
+      - systemd
+      - adduser
+    package_name: minecraft-server-center
+    meta: true
+    contents:
+      - src: './dist/minecraft-server-center_{{ .Os }}_{{ .Arch }}'
+        dst: /usr/bin/minecraft-server-center
+        file_info:
+          mode: 0755
+      - src: build/minecraft-server-center/contrib/minecraft-server-center.service
+        dst: /etc/systemd/system/minecraft-server-center.service
+        type: "config"
+      - src: build/minecraft-server-center/contrib/minecraft-server-center.defaults
+        dst: /etc/defaults/minecraft-server-center
+        type: "config"
+        file_info:
+          mode: 0640
+          owner: minecraft
+          group: minecraft
+    scripts:
+      preinstall: build/minecraft-server-center/scripts/preinst
+      postinstall: build/minecraft-server-center/scripts/postinst
+      preremove: build/minecraft-server-center/scripts/prerm
 
 changelog:
   sort: asc

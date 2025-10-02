@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# creating minecraft group if he isn't already there
+if ! getent group minecraft >/dev/null
+then
+  # Adding system group: minecraft.
+  addgroup --system minecraft >/dev/null
+fi
+
+# creating minecraft user if he isn't already there
+if ! getent passwd minecraft >/dev/null
+then
+  # Adding system user: minecraft.
+  adduser \
+    --system \
+    --disabled-login \
+    --ingroup minecraft \
+    --no-create-home \
+    --home /nonexistent \
+    --shell /bin/bash \
+    minecraft >/dev/null 2>&1
+fi
