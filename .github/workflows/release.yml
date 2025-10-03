@@ -21,18 +21,37 @@ jobs:
         go-version-file: "go.mod"
         cache: true
 
-    # - uses: docker/setup-qemu-action@v3
-
-    # - uses: docker/login-action@v3
-    #   with:
-    #     username: ${{ vars.DOCKERHUB_USERNAME }}
-    #     password: ${{ secrets.DOCKERHUB_TOKEN }}
-
-    - name: Run GoReleaser
-      uses: goreleaser/goreleaser-action@v6
+    - uses: goreleaser/goreleaser-action@v6
       with:
         distribution: goreleaser
         version: "~> v2"
         args: release --clean
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    - uses: docker/setup-qemu-action@v3
+
+    - uses: docker/login-action@v3
+      with:
+        username: ${{ vars.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+    - uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ./build/minecraft-server-wrapper/Dockerfile
+        platforms: linux/amd64
+        push: true
+        tags: 
+          ${{ vars.DOCKERHUB_USERNAME }}/minecraft-server-wrapper:latest
+          ${{ vars.DOCKERHUB_USERNAME }}/minecraft-server-wrapper:${{ github.ref_name }}
+
+    - uses: docker/build-push-action@v4
+      with:
+        context: .
+        file: ./build/minecraft-server-center/Dockerfile
+        platforms: linux/amd64
+        push: true
+        tags: 
+          ${{ vars.DOCKERHUB_USERNAME }}/minecraft-server-center:latest
+          ${{ vars.DOCKERHUB_USERNAME }}/minecraft-server-center:${{ github.ref_name }}
