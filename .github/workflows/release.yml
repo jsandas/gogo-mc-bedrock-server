@@ -36,22 +36,26 @@ jobs:
         username: ${{ vars.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-    - uses: docker/build-push-action@v4
+    - uses: docker/build-push-action@v6
       with:
         context: .
         file: ./build/minecraft-server-wrapper/Dockerfile
         platforms: linux/amd64
         push: true
-        tags: 
+        sbom: true
+        provenance: true
+        tags: |
           ${{ vars.DOCKERHUB_USERNAME }}/minecraft-server-wrapper:latest
           ${{ vars.DOCKERHUB_USERNAME }}/minecraft-server-wrapper:${{ github.ref_name }}
 
-    - uses: docker/build-push-action@v4
+    - uses: docker/build-push-action@v6
       with:
         context: .
         file: ./build/minecraft-server-center/Dockerfile
         platforms: linux/amd64
         push: true
-        tags: 
+        sbom: true
+        provenance: true
+        tags: |
           ${{ vars.DOCKERHUB_USERNAME }}/minecraft-server-center:latest
           ${{ vars.DOCKERHUB_USERNAME }}/minecraft-server-center:${{ github.ref_name }}
